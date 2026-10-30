@@ -1,0 +1,952 @@
+<title>Судоку шалгагч Pthreads</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@400;600&family=Unbounded:wght@500;700&display=swap">
+<style>
+/* Layout: OS систем мониторын ажлын ширээ — зүүн талд оролтын тор, баруун талд удирдлага/thread-үүд,
+   доор нь CPU цөмийн Gantt хуваарь, лог, туршилтын бүртгэл. */
+:root {
+  --bg: #eceff3;
+  --panel: #f8f9fb;
+  --ink: #18202c;
+  --muted: #5d6878;
+  --line: #d3d9e1;
+  --line-strong: #18202c;
+  --accent: #1d2c52;
+  --on-accent: #ffffff;
+  --focus: #2f62e0;
+  --ok: #1d8049;
+  --bad: #c3342a;
+  --c-rows: #2f63c9;
+  --c-cols: #8046c4;
+  --c-box: #b86f0c;
+  --c-all: #b3386a;
+  --c-main: #5a6577;
+  --on-cat: #ffffff;
+  --s1: #6b7587;
+  --s11: #11827a;
+  --s27: #b3386a;
+  --code-bg: #eef1f5;
+  --display: "Unbounded", "Golos Text", system-ui, sans-serif;
+  --body: "Golos Text", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11151c; --panel: #181e27; --ink: #e2e7ee; --muted: #97a2b2; --line: #2b3441; --line-strong: #c9d1dc;
+    --accent: #c9d6ff; --on-accent: #111827; --focus: #8fb0ff; --ok: #4cc27e; --bad: #f2695e;
+    --c-rows: #78a3f5; --c-cols: #b490f0; --c-box: #e8a64a; --c-all: #e57fa6; --c-main: #9aa5b6; --on-cat: #10141a;
+    --s1: #9aa5b6; --s11: #3fc2b4; --s27: #e57fa6; --code-bg: #121820; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11151c; --panel: #181e27; --ink: #e2e7ee; --muted: #97a2b2; --line: #2b3441; --line-strong: #c9d1dc;
+  --accent: #c9d6ff; --on-accent: #111827; --focus: #8fb0ff; --ok: #4cc27e; --bad: #f2695e;
+  --c-rows: #78a3f5; --c-cols: #b490f0; --c-box: #e8a64a; --c-all: #e57fa6; --c-main: #9aa5b6; --on-cat: #10141a;
+  --s1: #9aa5b6; --s11: #3fc2b4; --s27: #e57fa6; --code-bg: #121820; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 14px; line-height: 1.5; }
+.wrap { max-width: 1260px; margin: 0 auto; padding-block: 28px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 20px; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+header.top { display: grid; gap: 6px; }
+.eyebrow { font: 600 11px/1.2 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font: 700 clamp(24px, 4vw, 36px)/1.1 var(--display); margin: 0; letter-spacing: -.01em; text-wrap: balance; }
+h1 span { color: var(--muted); font-weight: 500; }
+.lede { margin: 0; max-width: 72ch; color: var(--muted); }
+
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+.panel > h2, .h2 { font: 600 11px/1.2 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 12px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.h2 small { font: 400 12px var(--body); letter-spacing: 0; text-transform: none; }
+
+.bench { display: grid; grid-template-columns: minmax(0, 430px) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 920px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+.stack { display: grid; gap: 20px; min-width: 0; }
+
+/* ---- Sudoku grid ---- */
+.sgrid { display: grid; grid-template-columns: repeat(9, 1fr); width: min(100%, 398px); aspect-ratio: 1; border: 2px solid var(--line-strong); margin: 0 auto; max-width: 100%; }
+.cell { position: relative; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); transition: background-color .12s; }
+.cell[data-c="2"], .cell[data-c="5"] { border-right: 2px solid var(--line-strong); }
+.cell[data-c="8"] { border-right: 0; }
+.cell[data-r="2"], .cell[data-r="5"] { border-bottom: 2px solid var(--line-strong); }
+.cell[data-r="8"] { border-bottom: 0; }
+.cell input { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; padding: 0; background: transparent; text-align: center; font: 600 clamp(15px, 4.4vw, 21px) var(--mono); color: var(--ink); caret-color: transparent; cursor: pointer; }
+.cell input:focus { outline: none; background: color-mix(in srgb, var(--focus) 16%, transparent); }
+.cell input:disabled { cursor: default; color: var(--ink); -webkit-text-fill-color: var(--ink); opacity: 1; }
+.cell.regbad { background: color-mix(in srgb, var(--bad) 8%, transparent); }
+.cell.bad { background: color-mix(in srgb, var(--bad) 22%, transparent); }
+.cell.bad input { color: var(--bad); -webkit-text-fill-color: var(--bad); }
+.cell.hl { background: color-mix(in srgb, var(--hlc) 18%, transparent); }
+.cell.scan { box-shadow: inset 0 0 0 2.5px var(--sc); background: color-mix(in srgb, var(--sc) 18%, transparent); }
+.cell.scan::after { content: attr(data-tag); position: absolute; top: 1px; left: 2px; font: 600 9px/1 var(--mono); color: var(--sc); pointer-events: none; }
+.cell.empty input { color: var(--muted); }
+
+.tools { display: grid; gap: 12px; margin-top: 14px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.row > label { font-size: 12px; color: var(--muted); }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field > span { font-size: 12px; color: var(--muted); }
+select, input[type="number"], textarea { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; min-width: 0; }
+input[type="number"] { width: 92px; font-family: var(--mono); }
+textarea { width: 100%; font: 12px/1.45 var(--mono); resize: vertical; min-height: 64px; }
+.btn { border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 7px 12px; cursor: pointer; font-weight: 500; white-space: nowrap; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.btn.primary:hover { filter: brightness(1.12); }
+.btn:disabled { opacity: .45; cursor: default; }
+.cmd { display: flex; gap: 8px; align-items: stretch; min-width: 0; }
+.cmd code { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; font: 12px/1.4 var(--mono); background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; }
+details.io summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+details.io[open] summary { margin-bottom: 8px; }
+.hint { font-size: 12px; color: var(--muted); margin: 0; }
+.err { color: var(--bad); font-size: 12px; margin: 0; }
+
+/* ---- Controls ---- */
+.controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px 18px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; justify-self: start; width: max-content; }
+.seg button { border: 0; background: transparent; padding: 7px 11px; cursor: pointer; font-weight: 500; border-right: 1px solid var(--line); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.slider { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; }
+.slider > span:first-child { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
+.slider output { font: 600 13px var(--mono); min-width: 6ch; text-align: right; font-variant-numeric: tabular-nums; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+.runbar { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); align-items: center; }
+.runbar .clock { margin-left: auto; font: 600 13px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* ---- Verdict + metrics ---- */
+.result { display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr); gap: 18px; align-items: center; }
+@media (max-width: 560px) { .result { grid-template-columns: minmax(0, 1fr); } }
+.verdict { display: grid; gap: 2px; }
+.verdict .v { font: 700 clamp(26px, 4vw, 34px)/1 var(--display); letter-spacing: .01em; }
+.verdict .v.ok { color: var(--ok); } .verdict .v.bad { color: var(--bad); } .verdict .v.idle { color: var(--muted); }
+.verdict .sub { font-size: 12px; color: var(--muted); }
+.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px 16px; margin: 0; }
+.metrics div { display: grid; gap: 1px; border-left: 1px solid var(--line); padding-left: 10px; }
+.metrics dt { font-size: 11.5px; color: var(--muted); }
+.metrics dd { margin: 0; font: 600 17px var(--mono); font-variant-numeric: tabular-nums; }
+
+/* ---- Threads ---- */
+.legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; background: var(--cc); }
+.maincard { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 8px; margin-bottom: 12px; }
+.maincard .tag { font: 600 12px var(--mono); background: var(--c-main); color: var(--on-cat); padding: 2px 8px; border-radius: 4px; }
+.maincard .st { font: 13px var(--mono); }
+.chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 8px; }
+.chip { border: 1px solid var(--line); border-radius: 7px; padding: 8px 9px 9px; display: grid; gap: 5px; background: var(--panel); cursor: default; transition: border-color .15s, background-color .15s; }
+.chip:hover, .chip:focus-visible { border-color: var(--cc); }
+.chip.running { background: color-mix(in srgb, var(--cc) 10%, var(--panel)); border-color: var(--cc); }
+.chip .top { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.chip .num { font: 600 11px var(--mono); background: var(--cc); color: var(--on-cat); padding: 1px 6px; border-radius: 4px; flex: none; }
+.chip .nm { font-weight: 500; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.chip .pr { font: 11px var(--mono); color: var(--muted); }
+.chip .bar { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.chip .bar b { display: block; height: 100%; width: 0; background: var(--cc); }
+.chip .stl { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.chip .stl .okv { color: var(--ok); font-weight: 600; } .chip .stl .badv { color: var(--bad); font-weight: 600; }
+
+.varr { margin-top: 14px; }
+.varr .cells { display: flex; flex-wrap: wrap; gap: 4px; }
+.varr .vc { width: 30px; display: grid; justify-items: center; gap: 1px; }
+.varr .vc small { font: 9.5px var(--mono); color: var(--muted); }
+.varr .vc b { width: 30px; height: 28px; display: grid; place-items: center; font: 600 14px var(--mono); border: 1px dashed var(--line); border-radius: 4px; color: var(--muted); }
+.varr .vc b.w1 { border: 1px solid var(--ok); color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); }
+.varr .vc b.w0 { border: 1px solid var(--bad); color: var(--bad); background: color-mix(in srgb, var(--bad) 12%, transparent); }
+
+/* ---- Gantt ---- */
+.gantt { overflow-x: auto; }
+.gantt svg { display: block; }
+.g-lane { fill: var(--bg); }
+.g-lbl { fill: var(--muted); font: 11px var(--mono); }
+.g-tick { stroke: var(--line); stroke-width: 1; }
+.g-tl { fill: var(--muted); font: 10px var(--mono); }
+.g-seg { stroke: var(--panel); stroke-width: 1; }
+.k-rows { fill: var(--c-rows); } .k-cols { fill: var(--c-cols); } .k-box { fill: var(--c-box); } .k-all { fill: var(--c-all); } .k-main { fill: var(--c-main); }
+.g-txt { fill: var(--on-cat); font: 600 10px var(--mono); pointer-events: none; }
+.g-cur { stroke: var(--ink); stroke-width: 1.5; }
+.g-empty { fill: var(--muted); font: 13px var(--body); }
+
+/* ---- Log + code ---- */
+.duo { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 20px; }
+@media (max-width: 920px) { .duo { grid-template-columns: minmax(0, 1fr); } }
+.log { height: 300px; overflow: auto; font: 12px/1.55 var(--mono); background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+.log div { display: grid; grid-template-columns: 4.5ch 7ch minmax(0, 1fr); gap: 8px; white-space: pre-wrap; word-break: break-word; }
+.log .t { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.log .w { font-weight: 600; }
+.log .dim { color: var(--muted); }
+.log .bad { color: var(--bad); } .log .ok { color: var(--ok); }
+pre.code { margin: 0; overflow: auto; max-height: 300px; font: 12px/1.55 var(--mono); background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
+pre.code .cm { color: var(--muted); }
+pre.code .kw { color: var(--c-cols); }
+pre.code .fn { color: var(--c-rows); }
+
+/* ---- Experiments ---- */
+.exp { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 20px; }
+@media (max-width: 1020px) { .exp { grid-template-columns: minmax(0, 1fr); } }
+.tablewrap { overflow-x: auto; max-height: 330px; overflow-y: auto; border: 1px solid var(--line); border-radius: 6px; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+th, td { padding: 6px 9px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-weight: 600; color: var(--muted); font-size: 11.5px; position: sticky; top: 0; background: var(--panel); }
+td.n { font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+td .okv { color: var(--ok); font-weight: 600; } td .badv { color: var(--bad); font-weight: 600; }
+tr.auto td { color: var(--muted); }
+.chart svg { display: block; width: 100%; height: auto; }
+.ch-grid { stroke: var(--line); stroke-width: 1; }
+.ch-ax { fill: var(--muted); font: 10.5px var(--mono); }
+.ch-axt { fill: var(--muted); font: 11px var(--body); }
+.ser-1 { stroke: var(--s1); fill: var(--s1); } .ser-11 { stroke: var(--s11); fill: var(--s11); } .ser-27 { stroke: var(--s27); fill: var(--s27); }
+.ch-line { fill: none; stroke-width: 2; }
+.ch-end { fill: var(--ink); font: 600 11px var(--mono); }
+.cbars { display: grid; gap: 8px; }
+.cbar { display: grid; grid-template-columns: 7ch minmax(0, 1fr) 11ch; gap: 10px; align-items: center; font: 12px var(--mono); }
+.cbar .track { height: 14px; background: var(--bg); border-radius: 3px; position: relative; overflow: hidden; }
+.cbar .track b { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; }
+.cbar .track i { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--ink); }
+.cbar span:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+.note { font-size: 12px; color: var(--muted); margin: 10px 0 0; max-width: 70ch; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">Operating System Concepts · Бүлэг 4 · Programming Project 1</div>
+    <h1>Судоку шалгагч <span>· Pthreads</span></h1>
+    <p class="lede">Parent thread worker thread-үүдийг үүсгэж, тус бүрт <code>parameters</code> бүтэц дамжуулна. Worker бүр өөрийн бүсийг шалгаад <code>valid[i]</code>-д 1 эсвэл 0 бичнэ. CPU цөмийн тоо, thread үүсгэх зардал, scheduler-ийн квантыг өөрчилж хугацаа хэрхэн өөрчлөгдөхийг туршина уу.</p>
+  </header>
+
+  <div class="bench">
+    <!-- ===== Input grid ===== -->
+    <section class="panel" aria-labelledby="h-grid">
+      <h2 id="h-grid">Оролтын тор <small id="gridSrc">Figure 4.26</small></h2>
+      <div class="sgrid" id="sgrid" role="grid" aria-label="Судоку 9×9 тор"></div>
+      <div class="tools">
+        <div class="row">
+          <div class="field" style="flex:1 1 200px">
+            <span>Бэлэн жишээ</span>
+            <select id="preset"></select>
+          </div>
+          <button class="btn" id="btnErr" type="button" title="Санамсаргүй нэг нүдийг өөр цифрээр солино">Алдаа +1</button>
+          <button class="btn" id="btnClear" type="button">Хоослох</button>
+        </div>
+        <div class="row">
+          <div class="field"><span>Seed</span><input type="number" id="genSeed" min="0" max="4294967295" value="42"></div>
+          <div class="field"><span>Алдаатай нүд</span><input type="number" id="genErr" min="0" max="81" value="0"></div>
+          <button class="btn" id="btnGen" type="button" style="align-self:end">Санамсаргүй үүсгэх</button>
+        </div>
+        <p class="hint">Нүдэн дээр дарж 1–9 цифр бичнэ, 0 / Space / Backspace хоосолно, сумаар шилжинэ. Санамсаргүй үүсгэгч C программын <code>-g</code>, <code>-e</code>-тэй ижил алгоритмтай тул ижил seed ижил тор өгнө.</p>
+        <div class="field">
+          <span>C программд ижил туршилт</span>
+          <div class="cmd"><code id="cmdText"></code><button class="btn" id="btnCopyCmd" type="button">Хуулах</button></div>
+        </div>
+        <details class="io">
+          <summary>Текстээр оруулах / гаргах</summary>
+          <div class="field">
+            <textarea id="ioText" spellcheck="false" aria-label="81 цифр"></textarea>
+            <div class="row"><button class="btn" id="btnLoad" type="button">Ачаалах</button><span class="hint">81 цифр; хоосон зай, | - + , үл тооцно; . эсвэл 0 = хоосон</span></div>
+            <p class="err" id="ioErr" hidden></p>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <div class="stack">
+      <!-- ===== Controls ===== -->
+      <section class="panel" aria-labelledby="h-ctl">
+        <h2 id="h-ctl">Туршилтын удирдлага</h2>
+        <div class="controls">
+          <div class="field">
+            <span>Thread-ийн стратеги</span>
+            <div class="seg" id="segStrategy" role="group" aria-label="Thread-ийн стратеги">
+              <button type="button" data-v="1" aria-pressed="false">1</button>
+              <button type="button" data-v="11" aria-pressed="true">11</button>
+              <button type="button" data-v="27" aria-pressed="false">27</button>
+            </div>
+          </div>
+          <div class="field">
+            <span>Ready queue-ийн дараалал</span>
+            <div class="row" style="flex-wrap:nowrap">
+              <div class="seg" id="segPolicy" role="group" aria-label="Дараалал">
+                <button type="button" data-v="fifo" aria-pressed="true">FIFO</button>
+                <button type="button" data-v="rand" aria-pressed="false">Санамсаргүй</button>
+              </div>
+              <input type="number" id="schedSeed" min="1" max="999999" value="7" aria-label="Scheduler seed" title="Санамсаргүй дарааллын seed" hidden>
+            </div>
+          </div>
+          <label class="slider" for="cores"><span>CPU цөм</span><input type="range" id="cores" min="1" max="8" value="4"><output id="coresOut">4</output></label>
+          <label class="slider" for="cost"><span>pthread_create зардал (tick)</span><input type="range" id="cost" min="1" max="20" value="3"><output id="costOut">3</output></label>
+          <label class="slider" for="quantum"><span>Round-robin квант (tick)</span><input type="range" id="quantum" min="0" max="6" value="3"><output id="quantumOut">8</output></label>
+          <label class="slider" for="speed"><span>Анимацын хурд</span><input type="range" id="speed" min="0" max="8" value="4"><output id="speedOut">30/с</output></label>
+        </div>
+        <p class="hint" style="margin-top:10px">1 tick = нэг нүдийг шалгах ажил. Нийт ашигтай ажил ямар ч стратегид 27 бүс × 9 нүд = 243 tick.</p>
+        <div class="runbar">
+          <button class="btn primary" id="btnRun" type="button">▶ Эхлүүлэх</button>
+          <button class="btn" id="btnStep" type="button">Алхам</button>
+          <button class="btn" id="btnFinish" type="button">Шууд дуусгах</button>
+          <button class="btn" id="btnReset" type="button">Дахин эхлэх</button>
+          <span class="clock" id="clock">t = 0</span>
+        </div>
+      </section>
+
+      <!-- ===== Result ===== -->
+      <section class="panel" aria-labelledby="h-res">
+        <h2 id="h-res">Дүн</h2>
+        <div class="result">
+          <div class="verdict" aria-live="polite"><span class="v idle" id="verdict">Шалгаагүй</span><span class="sub" id="verdictSub">▶ Эхлүүлэх дарна уу</span></div>
+          <dl class="metrics">
+            <div><dt>Нийт хугацаа</dt><dd id="mTime">–</dd></div>
+            <div><dt>CPU ашиглалт</dt><dd id="mUtil">–</dd></div>
+            <div><dt>Хурдатгал*</dt><dd id="mSpeed">–</dd></div>
+            <div><dt>Контекст солилт</dt><dd id="mSw">–</dd></div>
+            <div><dt>Үүсгэх зардал</dt><dd id="mOver">–</dd></div>
+          </dl>
+        </div>
+        <p class="note">* 1 thread, 1 цөмтэй ижил тохиргооны хугацааг энэ туршилтын хугацаанд хуваасан харьцаа.</p>
+      </section>
+    </div>
+  </div>
+
+  <!-- ===== Threads ===== -->
+  <section class="panel" aria-labelledby="h-thr">
+    <h2 id="h-thr">Thread-үүд <span class="legend">
+      <span style="--cc:var(--c-main)"><i></i>main</span>
+      <span style="--cc:var(--c-rows)"><i></i>мөр</span>
+      <span style="--cc:var(--c-cols)"><i></i>багана</span>
+      <span style="--cc:var(--c-box)"><i></i>дэд тор</span>
+      <span style="--cc:var(--c-all)"><i></i>бүх бүс</span>
+    </span></h2>
+    <div class="maincard"><span class="tag">main</span><span class="st" id="mainState">үүсгээгүй</span><span class="hint" id="mainHint">Карт дээр хулганаа аваачвал тухайн worker-ийн бүс торон дээр тодорно.</span></div>
+    <div class="chips" id="chips"></div>
+    <div class="varr">
+      <div class="h2">Үр дүнгийн массив <small><code>int valid[<span id="vN">11</span>]</code> · тасархай = бичигдээгүй (анхны утга 0)</small></div>
+      <div class="cells" id="varr"></div>
+    </div>
+  </section>
+
+  <!-- ===== Gantt ===== -->
+  <section class="panel" aria-labelledby="h-gantt">
+    <h2 id="h-gantt">CPU цөмийн хуваарь <small>Тэнхлэг: tick · өнгө = thread-ийн төрөл · # = worker-ийн дугаар</small></h2>
+    <div class="gantt" id="gantt"></div>
+  </section>
+
+  <div class="duo">
+    <section class="panel" aria-labelledby="h-log">
+      <h2 id="h-log">pthread лог</h2>
+      <div class="log" id="log" aria-live="off"></div>
+    </section>
+    <section class="panel" aria-labelledby="h-code">
+      <h2 id="h-code">C хэрэгжилт <small>sudoku_validator.c-ийн гол хэсэг</small></h2>
+      <pre class="code" id="code"></pre>
+    </section>
+  </div>
+
+  <!-- ===== Experiments ===== -->
+  <div class="exp">
+    <section class="panel" aria-labelledby="h-hist">
+      <h2 id="h-hist">Туршилтын бүртгэл <span class="row"><button class="btn" id="btnCompare" type="button">3 стратегийг харьцуулах</button><button class="btn" id="btnCsv" type="button">CSV хуулах</button><button class="btn" id="btnHistClear" type="button">Цэвэрлэх</button></span></h2>
+      <div class="tablewrap"><table>
+        <thead><tr><th>#</th><th>Оролт</th><th>Стратеги</th><th>Цөм</th><th>Зардал</th><th>Квант</th><th>Дараалал</th><th>Хугацаа</th><th>Ашиглалт</th><th>Солилт</th><th>Дүн</th></tr></thead>
+        <tbody id="hist"></tbody>
+      </table></div>
+      <p class="note">Туршилт дуусах бүрт мөр нэмэгдэнэ. Саарал мөрүүд хуудас ачаалахад анхдагч тохиргоогоор автоматаар хийгдсэн. CSV-г тайлангийн хүснэгтэд шууд буулгаж болно.</p>
+      <textarea id="csvFallback" hidden aria-label="CSV"></textarea>
+    </section>
+    <div class="stack">
+      <section class="panel chart" aria-labelledby="h-sweep">
+        <h2 id="h-sweep">Цөмийн тооны нөлөө <small id="sweepSub"></small></h2>
+        <div id="sweep"></div>
+      </section>
+      <section class="panel" aria-labelledby="h-real">
+        <h2 id="h-real">Бодит хэмжилт · C программ</h2>
+        <div class="cbars" id="cbars"></div>
+        <p class="note">./sudoku_validator -b 2000 (Figure 4.26), 2 vCPU Linux, gcc 13.3 -O2. Багана = дундаж мкс, босоо зураас = хамгийн бага. Ажил маш бага тул thread үүсгэх зардал давамгайлж, олон thread удаан байна.</p>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+"use strict";
+const FULL = 0x3FE;
+const REGN = ["мөр", "багана", "дэд тор"];
+const $ = (id) => document.getElementById(id);
+
+/* ---------- Presets (C программын tests/ хавтастай ижил) ---------- */
+const FIG = ["624539187","519728634","837614295","143865729","958247361","762391458","371956842","496182573","285473916"];
+const fromRows = (rows) => rows.map((s) => [...s].map(Number));
+const clone = (g) => g.map((r) => r.slice());
+const PRESETS = [
+  { id: "fig", name: "Figure 4.26 — зөв", file: "tests/valid_fig426.txt", grid: () => fromRows(FIG) },
+  { id: "one", name: "Нэг нүд буруу ([1,1] 6→2)", file: "tests/invalid_one_cell.txt", grid: () => { const g = fromRows(FIG); g[0][0] = 2; return g; } },
+  { id: "latin", name: "Зөвхөн дэд тор буруу (Латин квадрат)", file: "tests/invalid_subgrids_only.txt", grid: () => Array.from({ length: 9 }, (_, r) => Array.from({ length: 9 }, (_, c) => ((r + c) % 9) + 1)) },
+  { id: "cols", name: "Зөвхөн багана буруу (2 нүд сольсон)", file: "tests/invalid_columns_only.txt", grid: () => { const g = fromRows(FIG); [g[0][0], g[0][1]] = [g[0][1], g[0][0]]; return g; } },
+  { id: "inc", name: "Бүрэн бөглөөгүй (хоосон нүдтэй)", file: "tests/invalid_incomplete.txt", grid: () => { const g = fromRows(FIG); g[2][4] = 0; g[8][8] = 0; return g; } },
+  { id: "five", name: "Бүх нүд 5", file: "tests/invalid_all_same.txt", grid: () => Array.from({ length: 9 }, () => Array(9).fill(5)) },
+];
+
+/* ---------- C программын xorshift32 үүсгэгчийн яг хуулбар ---------- */
+let rngState = 0x9E3779B9 >>> 0;
+function rnd() { let x = rngState; x = (x ^ (x << 13)) >>> 0; x = (x ^ (x >>> 17)) >>> 0; x = (x ^ (x << 5)) >>> 0; rngState = x; return x; }
+const rndBelow = (n) => rnd() % n;
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = rndBelow(i + 1); [a[i], a[j]] = [a[j], a[i]]; } }
+function generate(seed) {
+  rngState = (seed >>> 0) || 0x9E3779B9;
+  for (let i = 0; i < 8; i++) rnd();
+  const digits = [1,2,3,4,5,6,7,8,9], rows = [], cols = [], band = [0,1,2], stack = [0,1,2];
+  shuffle(digits); shuffle(band); shuffle(stack);
+  for (let b = 0; b < 3; b++) {
+    const ir = [0,1,2], ic = [0,1,2];
+    shuffle(ir); shuffle(ic);
+    for (let k = 0; k < 3; k++) { rows[b * 3 + k] = band[b] * 3 + ir[k]; cols[b * 3 + k] = stack[b] * 3 + ic[k]; }
+  }
+  const g = [];
+  for (let r = 0; r < 9; r++) { g.push([]); for (let c = 0; c < 9; c++) g[r].push(digits[(3 * (rows[r] % 3) + ((rows[r] / 3) | 0) + cols[c]) % 9]); }
+  return g;
+}
+function injectErrors(g, k) {
+  const used = new Array(81).fill(false), out = [];
+  k = Math.min(k, 81);
+  for (let i = 0; i < k; i++) {
+    let pos; do { pos = rndBelow(81); } while (used[pos]);
+    used[pos] = true;
+    const r = (pos / 9) | 0, c = pos % 9, old = g[r][c];
+    let v; do { v = 1 + rndBelow(9); } while (v === old);
+    g[r][c] = v; out.push([r, c, old, v]);
+  }
+  return out;
+}
+
+/* ---------- Worker-ийн төлөвлөгөө (C-ийн build_plan-тай ижил) ---------- */
+function cellOf(reg, no, k) {
+  if (reg === 0) return [no, k];
+  if (reg === 1) return [k, no];
+  return [((no / 3) | 0) * 3 + ((k / 3) | 0), (no % 3) * 3 + (k % 3)];
+}
+function buildPlan(strategy) {
+  const W = [];
+  const add = (o) => { o.index = W.length; o.units = o.regions.length * 9; W.push(o); };
+  const boxes = () => { for (let b = 0; b < 9; b++) { const r0 = ((b / 3) | 0) * 3, c0 = (b % 3) * 3; add({ kind: "box", fn: "check_subgrid", name: `дэд тор ${b + 1}`, row: r0, column: c0, count: 1, regions: [{ reg: 2, no: b }] }); } };
+  if (strategy === 1) {
+    const regs = []; for (let i = 0; i < 9; i++) regs.push({ reg: 0, no: i }, { reg: 1, no: i }, { reg: 2, no: i });
+    add({ kind: "all", fn: "check_all", name: "бүх 27 бүс", row: 0, column: 0, count: 9, regions: regs });
+  } else if (strategy === 11) {
+    add({ kind: "rows", fn: "check_rows", name: "бүх мөр 1–9", row: 0, column: 0, count: 9, regions: [...Array(9)].map((_, i) => ({ reg: 0, no: i })) });
+    add({ kind: "cols", fn: "check_columns", name: "бүх багана 1–9", row: 0, column: 0, count: 9, regions: [...Array(9)].map((_, i) => ({ reg: 1, no: i })) });
+    boxes();
+  } else {
+    for (let r = 0; r < 9; r++) add({ kind: "rows", fn: "check_rows", name: `мөр ${r + 1}`, row: r, column: 0, count: 1, regions: [{ reg: 0, no: r }] });
+    for (let c = 0; c < 9; c++) add({ kind: "cols", fn: "check_columns", name: `багана ${c + 1}`, row: 0, column: c, count: 1, regions: [{ reg: 1, no: c }] });
+    boxes();
+  }
+  return W;
+}
+
+/* ---------- Симуляц: олон цөмт CPU, round-robin scheduler ---------- */
+function mulberry(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+
+function createSim(grid, cfg, withLog) {
+  const workers = buildPlan(cfg.strategy).map((w) => Object.assign(w, { state: "new", done: 0, ok: true, mask: 0, regOk: true, issues: [], badRegions: [], core: -1, started: false }));
+  const S = {
+    cfg: Object.assign({}, cfg), grid: clone(grid), t: 0, workers,
+    main: { id: "M", kind: "main", state: "ready", phase: "create", created: 0, prog: 0, core: -1 },
+    ready: ["M"], cores: new Array(cfg.cores).fill(null), lastOn: new Array(cfg.cores).fill(null),
+    segs: Array.from({ length: cfg.cores }, () => []), valid: new Array(workers.length).fill(0), written: new Array(workers.length).fill(false),
+    busy: 0, switches: 0, preempts: 0, done: false, verdict: null, scan: [], log: withLog ? [] : null,
+    rand: mulberry(cfg.schedSeed || 1),
+  };
+  log(S, "main", `main thread эхэллээ: ${workers.length} worker үүсгэнэ`, "dim");
+  return S;
+}
+function log(S, who, text, cls) { if (S.log) { S.log.push({ t: S.t, who, text, cls: cls || "" }); if (S.log.length > 1500) S.log.splice(0, 300); } }
+const thOf = (S, id) => (id === "M" ? S.main : S.workers[id]);
+const whoOf = (id) => (id === "M" ? "main" : "#" + id);
+
+function tick(S) {
+  if (S.done) return;
+  const C = S.cfg.cores, Q = S.cfg.quantum;
+  // 1. Сул цөмд ready queue-ээс thread оноох
+  for (let k = 0; k < C; k++) {
+    if (S.cores[k] || !S.ready.length) continue;
+    const idx = S.cfg.policy === "rand" ? Math.floor(S.rand() * S.ready.length) : 0;
+    const id = S.ready.splice(idx, 1)[0], th = thOf(S, id);
+    S.cores[k] = { id, slice: 0 };
+    if (S.lastOn[k] !== null && S.lastOn[k] !== id) S.switches++;
+    th.state = "running"; th.core = k;
+    if (id !== "M") {
+      if (!th.started) { th.started = true; log(S, "CPU " + k, `#${id} эхэллээ — ${th.fn}(${th.name})`); }
+      else log(S, "CPU " + k, `#${id} үргэлжлэв`, "dim");
+    }
+  }
+  // 2. Цөм бүр нэг tick ажиллана
+  S.scan = [];
+  const created = [];
+  for (let k = 0; k < C; k++) {
+    const slot = S.cores[k]; if (!slot) continue;
+    const th = thOf(S, slot.id);
+    S.busy++;
+    const seg = S.segs[k], last = seg[seg.length - 1];
+    if (last && last.id === slot.id && last.b === S.t) last.b = S.t + 1; else seg.push({ id: slot.id, kind: th.kind, a: S.t, b: S.t + 1 });
+    if (slot.id === "M") execMain(S, created); else execWorker(S, th, k);
+    slot.slice++;
+  }
+  // 3. Дууссан / блоклогдсон / квант дууссан thread-ийг цөмөөс буулгах
+  const pre = [];
+  for (let k = 0; k < C; k++) {
+    const slot = S.cores[k]; if (!slot) continue;
+    const th = thOf(S, slot.id);
+    if (th.state === "done" || th.state === "blocked") { S.lastOn[k] = slot.id; S.cores[k] = null; th.core = -1; continue; }
+    if (Q > 0 && slot.slice >= Q && S.ready.length + created.length + pre.length > 0) {
+      th.state = "ready"; th.core = -1; pre.push(slot.id); S.preempts++; S.lastOn[k] = slot.id; S.cores[k] = null;
+      log(S, "CPU " + k, `${whoOf(slot.id)} квант дуусаж ready queue руу буцав`, "dim");
+    }
+  }
+  S.ready.push(...created, ...pre);
+  S.t++;
+  // 4. pthread_join: бүх worker дууссан бол main сэрнэ
+  if (S.main.phase === "join" && S.workers.every((w) => w.state === "done")) {
+    S.main.phase = "agg"; S.main.state = "ready"; S.ready.push("M");
+    log(S, "main", `pthread_join: ${S.workers.length} worker бүгд дууслаа`);
+  }
+}
+function execMain(S, created) {
+  const m = S.main;
+  if (m.phase === "create") {
+    m.prog++;
+    if (m.prog % S.cfg.cost === 0) {
+      const w = S.workers[m.created++];
+      w.state = "ready"; created.push(w.index);
+      log(S, "main", `pthread_create(&tid[${w.index}], NULL, ${w.fn}, data)  row=${w.row} column=${w.column}`);
+      if (m.created === S.workers.length) { m.phase = "join"; m.state = "blocked"; log(S, "main", "pthread_join() дээр хүлээж блоклогдов", "dim"); }
+    }
+  } else if (m.phase === "agg") {
+    const ok = S.valid.every((v) => v === 1);
+    S.verdict = ok; m.phase = "done"; m.state = "done"; S.done = true; S.final = S.t + 1;
+    log(S, "main", `valid[] = [${S.valid.join(" ")}] → судоку ${ok ? "ЗӨВ" : "БУРУУ"}`, ok ? "ok" : "bad");
+  }
+}
+function execWorker(S, w, core) {
+  const u = w.done, R = w.regions[(u / 9) | 0], k = u % 9;
+  const [r, c] = cellOf(R.reg, R.no, k);
+  if (k === 0) { w.mask = 0; w.regOk = true; }
+  const v = S.grid[r][c];
+  S.scan.push({ core, id: w.index, kind: w.kind, r, c });
+  const rn = `${REGN[R.reg]} ${R.no + 1}`;
+  if (v < 1 || v > 9) { w.regOk = false; w.issues.push({ reg: R.reg, no: R.no, type: "range", r, c, d: v }); log(S, "#" + w.index, `${rn}: нүд [${r + 1},${c + 1}] хоосон`, "bad"); }
+  else {
+    if (w.mask & (1 << v)) { w.regOk = false; w.issues.push({ reg: R.reg, no: R.no, type: "dup", r, c, d: v }); log(S, "#" + w.index, `${rn}: ${v} цифр давхардсан [${r + 1},${c + 1}]`, "bad"); }
+    w.mask |= 1 << v;
+  }
+  if (k === 8) {
+    if (w.mask !== FULL) w.regOk = false;
+    if (!w.regOk) { w.ok = false; w.badRegions.push(R); }
+  }
+  w.done++;
+  if (w.done === w.units) {
+    w.state = "done"; S.valid[w.index] = w.ok ? 1 : 0; S.written[w.index] = true;
+    log(S, "#" + w.index, `дууслаа → valid[${w.index}] = ${S.valid[w.index]}`, w.ok ? "ok" : "bad");
+  }
+}
+function runToEnd(S) { let guard = 0; while (!S.done && guard++ < 200000) tick(S); return S; }
+function finalTime(grid, cfg) { return runToEnd(createSim(grid, cfg, false)).final; }
+
+/* ---------- Төлөв ---------- */
+const QUANTA = [0, 2, 4, 8, 16, 32, 64];
+const SPEEDS = [3, 6, 12, 20, 30, 60, 120, 240, 600];
+let grid = PRESETS[0].grid();
+let source = { kind: "preset", preset: PRESETS[0] };
+const cfg = { strategy: 11, cores: 4, cost: 3, quantum: 8, policy: "fifo", schedSeed: 7 };
+let speed = 30;
+let S = null, playing = false, rafId = 0, lastTs = 0, acc = 0, logShown = 0, hover = null, recorded = false;
+const history = [];
+
+/* ---------- Grid UI ---------- */
+const gridEl = $("sgrid"), cells = [];
+for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
+  const d = document.createElement("div");
+  d.className = "cell"; d.dataset.r = r; d.dataset.c = c; d.setAttribute("role", "gridcell");
+  const inp = document.createElement("input");
+  inp.id = `cell-${r}-${c}`; inp.inputMode = "numeric"; inp.maxLength = 1; inp.autocomplete = "off";
+  inp.setAttribute("aria-label", `Мөр ${r + 1}, багана ${c + 1}`);
+  inp.addEventListener("keydown", (e) => onCellKey(e, r, c));
+  inp.addEventListener("input", () => { const m = inp.value.match(/[0-9]/); setCell(r, c, m ? +m[0] : 0); });
+  inp.addEventListener("focus", () => inp.select());
+  d.appendChild(inp); gridEl.appendChild(d); cells.push({ d, inp });
+}
+function onCellKey(e, r, c) {
+  const mv = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }[e.key];
+  if (mv) { e.preventDefault(); const nr = (r + mv[0] + 9) % 9, nc = (c + mv[1] + 9) % 9; cells[nr * 9 + nc].inp.focus(); return; }
+  if (e.key === "Backspace" || e.key === "Delete" || e.key === " " || e.key === "0") { e.preventDefault(); setCell(r, c, 0); return; }
+  if (/^[1-9]$/.test(e.key)) { e.preventDefault(); setCell(r, c, +e.key); const n = r * 9 + c + 1; if (n < 81) cells[n].inp.focus(); }
+}
+function setCell(r, c, v) {
+  if (playing) return;
+  grid[r][c] = v; source = { kind: "custom" }; paintGridValues(); freshSim();
+}
+function paintGridValues() {
+  for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
+    const v = grid[r][c], cell = cells[r * 9 + c];
+    cell.inp.value = v >= 1 && v <= 9 ? String(v) : "";
+    cell.d.classList.toggle("empty", !(v >= 1 && v <= 9));
+  }
+  $("gridSrc").textContent = source.kind === "preset" ? source.preset.name.split(" — ")[0] : source.kind === "gen" ? `seed ${source.seed}${source.errors ? `, ${source.errors} алдаа` : ""}` : "засварласан";
+  $("ioText").value = grid.map((row) => row.map((v) => (v >= 1 && v <= 9 ? v : ".")).join(" ")).join("\n");
+  updateCmd();
+}
+function updateCmd() {
+  const t = `-t ${cfg.strategy}`;
+  let cmd;
+  if (source.kind === "preset") cmd = `./sudoku_validator ${t} -f ${source.preset.file}`;
+  else if (source.kind === "gen") cmd = `./sudoku_validator ${t} -g ${source.seed}${source.errors ? ` -e ${source.errors}` : ""}`;
+  else cmd = `echo "${grid.map((r) => r.map((v) => (v >= 1 && v <= 9 ? v : ".")).join("")).join("")}" | ./sudoku_validator ${t} -f -`;
+  $("cmdText").textContent = cmd;
+}
+
+/* ---------- Controls ---------- */
+const presetSel = $("preset");
+PRESETS.forEach((p, i) => { const o = document.createElement("option"); o.value = i; o.textContent = p.name; presetSel.appendChild(o); });
+const customOpt = document.createElement("option"); customOpt.value = "-1"; customOpt.textContent = "— бусад —"; customOpt.disabled = true; presetSel.appendChild(customOpt);
+presetSel.addEventListener("change", () => { const p = PRESETS[+presetSel.value]; if (!p) return; stop(); grid = p.grid(); source = { kind: "preset", preset: p }; paintGridValues(); freshSim(); });
+$("btnGen").addEventListener("click", () => {
+  stop();
+  const seed = Math.max(0, Math.min(4294967295, Math.floor(+$("genSeed").value || 0)));
+  const errors = Math.max(0, Math.min(81, Math.floor(+$("genErr").value || 0)));
+  grid = generate(seed); const ch = injectErrors(grid, errors);
+  source = { kind: "gen", seed, errors };
+  presetSel.value = "-1"; paintGridValues(); freshSim();
+  if (ch.length && S) ch.forEach(([r, c, o, v]) => log(S, "оролт", `алдаа оруулав: нүд [${r + 1},${c + 1}] ${o} → ${v}`, "dim"));
+  renderLog();
+});
+$("btnErr").addEventListener("click", () => {
+  stop();
+  rngState = ((Date.now() & 0xffffffff) >>> 0) | 1;
+  const ch = injectErrors(grid, 1);
+  source = { kind: "custom" }; presetSel.value = "-1"; paintGridValues(); freshSim();
+  ch.forEach(([r, c, o, v]) => log(S, "оролт", `алдаа оруулав: нүд [${r + 1},${c + 1}] ${o} → ${v}`, "dim"));
+  renderLog();
+});
+$("btnClear").addEventListener("click", () => { stop(); grid = Array.from({ length: 9 }, () => Array(9).fill(0)); source = { kind: "custom" }; presetSel.value = "-1"; paintGridValues(); freshSim(); });
+$("btnLoad").addEventListener("click", () => {
+  const txt = $("ioText").value.replace(/#[^\n]*/g, "");
+  const vals = [];
+  for (const ch of txt) {
+    if (" \t\r\n,|-+;".includes(ch)) continue;
+    if (/[0-9]/.test(ch)) vals.push(+ch);
+    else if (ch === "." || ch === "_") vals.push(0);
+    else { showIoErr(`'${ch}' тэмдэгт ойлгомжгүй байна. Зөвхөн 0–9 цифр болон . ашиглана уу.`); return; }
+  }
+  if (vals.length !== 81) { showIoErr(`81 нүд хэрэгтэй, ${vals.length} олдлоо.`); return; }
+  $("ioErr").hidden = true; stop();
+  grid = Array.from({ length: 9 }, (_, r) => vals.slice(r * 9, r * 9 + 9));
+  source = { kind: "custom" }; presetSel.value = "-1"; paintGridValues(); freshSim();
+});
+function showIoErr(m) { const e = $("ioErr"); e.textContent = m; e.hidden = false; }
+
+function bindSeg(id, key, conv) {
+  const el = $(id);
+  el.addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    el.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    cfg[key] = conv(b.dataset.v);
+    if (key === "policy") $("schedSeed").hidden = cfg.policy !== "rand";
+    stop(); freshSim(); updateCmd(); renderCode(); renderSweep();
+  });
+}
+bindSeg("segStrategy", "strategy", Number);
+bindSeg("segPolicy", "policy", String);
+$("schedSeed").addEventListener("change", () => { cfg.schedSeed = Math.max(1, Math.floor(+$("schedSeed").value || 1)); stop(); freshSim(); renderSweep(); });
+function bindRange(id, out, apply, label) {
+  const el = $(id);
+  const upd = () => { apply(+el.value); $(out).textContent = label(+el.value); };
+  el.addEventListener("input", () => { upd(); if (id !== "speed") { stop(); freshSim(); renderSweep(); } });
+  upd();
+}
+bindRange("cores", "coresOut", (v) => (cfg.cores = v), (v) => String(v));
+bindRange("cost", "costOut", (v) => (cfg.cost = v), (v) => String(v));
+bindRange("quantum", "quantumOut", (v) => (cfg.quantum = QUANTA[v]), (v) => (QUANTA[v] ? String(QUANTA[v]) : "∞"));
+bindRange("speed", "speedOut", (v) => (speed = SPEEDS[v]), (v) => SPEEDS[v] + "/с");
+
+$("btnRun").addEventListener("click", () => {
+  if (playing) { stop(); return; }
+  if (!S || S.done) freshSim();
+  play();
+});
+$("btnStep").addEventListener("click", () => { stop(); if (!S || S.done) freshSim(); tick(S); afterTick(); render(); });
+$("btnFinish").addEventListener("click", () => { stop(); if (!S || S.done) freshSim(); runToEnd(S); afterTick(); render(); });
+$("btnReset").addEventListener("click", () => { stop(); freshSim(); });
+
+function play() {
+  playing = true; lastTs = 0; acc = 0; setLock(true);
+  $("btnRun").textContent = "❚❚ Түр зогсоох";
+  const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduce) { runToEnd(S); afterTick(); stop(); render(); return; }
+  const loop = (ts) => {
+    if (!playing) return;
+    if (lastTs) acc += Math.min(250, ts - lastTs) * speed / 1000;
+    lastTs = ts;
+    let n = Math.floor(acc); acc -= n;
+    while (n-- > 0 && !S.done) tick(S);
+    afterTick(); render();
+    if (S.done) { stop(); return; }
+    rafId = requestAnimationFrame(loop);
+  };
+  rafId = requestAnimationFrame(loop);
+}
+function stop() { playing = false; cancelAnimationFrame(rafId); setLock(false); $("btnRun").textContent = S && S.done ? "▶ Дахин тоглуулах" : S && S.t > 0 ? "▶ Үргэлжлүүлэх" : "▶ Эхлүүлэх"; }
+function setLock(on) { cells.forEach((c) => (c.inp.disabled = on)); }
+function afterTick() {
+  if (S.done && !recorded) { recorded = true; addHistory(S, false); }
+}
+function freshSim() {
+  S = createSim(grid, cfg, true);
+  S.final = finalTime(grid, cfg);
+  S.base = finalTime(grid, Object.assign({}, cfg, { strategy: 1, cores: 1 }));
+  recorded = false; logShown = 0; $("log").textContent = "";
+  buildChips(); render();
+  if (!playing) $("btnRun").textContent = "▶ Эхлүүлэх";
+}
+
+/* ---------- Render ---------- */
+const KIND_VAR = { rows: "--c-rows", cols: "--c-cols", box: "--c-box", all: "--c-all", main: "--c-main" };
+function buildChips() {
+  const box = $("chips"); box.textContent = "";
+  S.workers.forEach((w) => {
+    const el = document.createElement("div");
+    el.className = "chip"; el.tabIndex = 0; el.style.setProperty("--cc", `var(${KIND_VAR[w.kind]})`);
+    el.innerHTML = `<div class="top"><span class="num">#${w.index}</span><span class="nm"></span></div><div class="pr"></div><div class="bar"><b></b></div><div class="stl"><span class="s"></span><span class="v"></span></div>`;
+    el.querySelector(".nm").textContent = w.name;
+    el.querySelector(".pr").textContent = `${w.fn} · row=${w.row} column=${w.column}`;
+    const on = () => { hover = w.index; renderGrid(); }, off = () => { hover = null; renderGrid(); };
+    el.addEventListener("mouseenter", on); el.addEventListener("mouseleave", off);
+    el.addEventListener("focus", on); el.addEventListener("blur", off);
+    w.el = el; box.appendChild(el);
+  });
+  $("vN").textContent = S.workers.length;
+  const va = $("varr"); va.textContent = "";
+  S.workers.forEach((w, i) => { const d = document.createElement("div"); d.className = "vc"; d.innerHTML = `<small>${i}</small><b>0</b>`; va.appendChild(d); w.vel = d.querySelector("b"); });
+}
+function render() {
+  renderGrid(); renderThreads(); renderResult(); renderGantt(); renderLog();
+  $("clock").textContent = `t = ${S.t}${S.final ? " / " + S.final : ""}`;
+}
+function renderGrid() {
+  const scan = new Map();
+  S.scan.forEach((s) => scan.set(s.r * 9 + s.c, s));
+  const bad = new Set(), regbad = new Set(), hl = new Set();
+  S.workers.forEach((w) => {
+    if (w.state !== "done") return;
+    w.badRegions.forEach((R) => { for (let k = 0; k < 9; k++) { const [r, c] = cellOf(R.reg, R.no, k); regbad.add(r * 9 + c); } });
+    w.issues.forEach((is) => {
+      if (is.type === "range") bad.add(is.r * 9 + is.c);
+      else for (let k = 0; k < 9; k++) { const [r, c] = cellOf(is.reg, is.no, k); if (S.grid[r][c] === is.d) bad.add(r * 9 + c); }
+    });
+  });
+  let hlKind = null;
+  if (hover !== null && S.workers[hover]) { const w = S.workers[hover]; hlKind = w.kind; w.regions.forEach((R) => { for (let k = 0; k < 9; k++) { const [r, c] = cellOf(R.reg, R.no, k); hl.add(r * 9 + c); } }); }
+  cells.forEach((cell, i) => {
+    const d = cell.d, s = scan.get(i);
+    d.classList.toggle("scan", !!s);
+    if (s) { d.style.setProperty("--sc", `var(${KIND_VAR[s.kind]})`); d.dataset.tag = "#" + s.id; } else d.removeAttribute("data-tag");
+    d.classList.toggle("bad", bad.has(i));
+    d.classList.toggle("regbad", regbad.has(i) && !bad.has(i));
+    d.classList.toggle("hl", hl.has(i) && !s);
+    if (hlKind) d.style.setProperty("--hlc", `var(${KIND_VAR[hlKind]})`);
+  });
+}
+function renderThreads() {
+  const m = S.main;
+  $("mainState").textContent = m.phase === "create" ? (m.state === "running" ? `pthread_create ${m.created}/${S.workers.length} (CPU ${m.core})` : `pthread_create ${m.created}/${S.workers.length} — ${S.t === 0 ? "эхлээгүй" : "ready queue-д"}`)
+    : m.phase === "join" ? "pthread_join() дээр блоклогдсон"
+    : m.phase === "agg" ? "valid[] уншиж байна"
+    : `дүн гаргасан: судоку ${S.verdict ? "ЗӨВ" : "БУРУУ"}`;
+  S.workers.forEach((w) => {
+    const el = w.el;
+    el.classList.toggle("running", w.state === "running");
+    el.querySelector(".bar b").style.width = (100 * w.done / w.units) + "%";
+    el.querySelector(".s").textContent = w.state === "new" ? "үүсээгүй" : w.state === "ready" ? (w.started ? `бэлэн · ${w.done}/${w.units}` : "бэлэн") : w.state === "running" ? `CPU ${w.core} · ${w.done}/${w.units}` : `дууссан t=${segEnd(w.index)}`;
+    const v = el.querySelector(".v");
+    if (w.state === "done") { v.textContent = w.ok ? "valid=1" : "valid=0"; v.className = "v " + (w.ok ? "okv" : "badv"); } else { v.textContent = ""; v.className = "v"; }
+    const vb = w.vel; vb.textContent = S.valid[w.index]; vb.className = S.written[w.index] ? (S.valid[w.index] ? "w1" : "w0") : "";
+  });
+}
+function segEnd(id) { let e = 0; S.segs.forEach((s) => s.forEach((g) => { if (g.id === id && g.b > e) e = g.b; })); return e; }
+function renderResult() {
+  const v = $("verdict"), sub = $("verdictSub");
+  if (S.done) {
+    v.textContent = S.verdict ? "ЗӨВ" : "БУРУУ"; v.className = "v " + (S.verdict ? "ok" : "bad");
+    const n1 = S.valid.filter((x) => x === 1).length;
+    sub.textContent = `valid[] ${n1}/${S.valid.length} worker 1 буцаасан`;
+  } else if (S.t > 0) { v.textContent = "Шалгаж байна"; v.className = "v idle"; sub.textContent = `${S.workers.filter((w) => w.state === "done").length}/${S.workers.length} worker дууссан`; }
+  else { v.textContent = "Шалгаагүй"; v.className = "v idle"; sub.textContent = "▶ Эхлүүлэх эсвэл Шууд дуусгах дарна уу"; }
+  const T = S.done ? S.final : S.t;
+  $("mTime").textContent = T ? `${T} tick` : "–";
+  $("mUtil").textContent = T ? Math.round(100 * S.busy / (S.cfg.cores * T)) + "%" : "–";
+  $("mSpeed").textContent = S.done ? (S.base / S.final).toFixed(2) + "×" : "–";
+  $("mSw").textContent = T ? String(S.switches) : "–";
+  $("mOver").textContent = `${S.workers.length}×${S.cfg.cost} = ${S.workers.length * S.cfg.cost}`;
+}
+function niceStep(range, target) {
+  const raw = range / target, p = Math.pow(10, Math.floor(Math.log10(raw))), f = raw / p;
+  return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * p;
+}
+function renderGantt() {
+  const host = $("gantt");
+  const W = Math.max(560, host.clientWidth || 800), K = S.cfg.cores, rowH = 24, gap = 6, left = 54, right = 14, top = 6, axis = 24;
+  const H = top + K * (rowH + gap) + axis;
+  const T = Math.max(1, S.final || 1), x = (t) => left + (W - left - right) * t / T;
+  let s = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="CPU цөм тус бүр дээр ажилласан thread-үүдийн хуваарь">`;
+  const step = niceStep(T, 10);
+  for (let t = 0; t <= T + 0.001; t += step) { const xx = x(t).toFixed(1); s += `<line class="g-tick" x1="${xx}" x2="${xx}" y1="${top}" y2="${H - axis + 4}"/><text class="g-tl" x="${xx}" y="${H - 6}" text-anchor="middle">${Math.round(t)}</text>`; }
+  for (let k = 0; k < K; k++) {
+    const y = top + k * (rowH + gap);
+    s += `<rect class="g-lane" x="${left}" y="${y}" width="${W - left - right}" height="${rowH}" rx="3"/><text class="g-lbl" x="${left - 8}" y="${y + rowH / 2 + 4}" text-anchor="end">CPU ${k}</text>`;
+    S.segs[k].forEach((g) => {
+      const x0 = x(g.a), w = Math.max(0.8, x(g.b) - x0);
+      s += `<rect class="g-seg k-${g.kind}" x="${x0.toFixed(2)}" y="${y}" width="${w.toFixed(2)}" height="${rowH}"><title>${g.id === "M" ? "main" : "#" + g.id} · t=${g.a}–${g.b}</title></rect>`;
+      const lbl = g.id === "M" ? "main" : "#" + g.id;
+      if (w > lbl.length * 6.6 + 6) s += `<text class="g-txt" x="${(x0 + w / 2).toFixed(1)}" y="${y + rowH / 2 + 3.5}" text-anchor="middle">${lbl}</text>`;
+    });
+  }
+  if (S.t > 0 && !S.done) { const xx = x(S.t).toFixed(1); s += `<line class="g-cur" x1="${xx}" x2="${xx}" y1="${top - 2}" y2="${H - axis + 2}"/>`; }
+  if (S.t === 0) s += `<text class="g-empty" x="${left + 10}" y="${top + rowH / 2 + 5}">Хуваарь энд зурагдана · хүлээгдэж буй нийт хугацаа ${T} tick</text>`;
+  host.innerHTML = s + "</svg>";
+}
+function renderLog() {
+  const el = $("log");
+  if (!S.log) return;
+  if (logShown > S.log.length) { el.textContent = ""; logShown = 0; }
+  const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+  const frag = document.createDocumentFragment();
+  for (let i = logShown; i < S.log.length; i++) {
+    const L = S.log[i], d = document.createElement("div");
+    const t = document.createElement("span"); t.className = "t"; t.textContent = L.t;
+    const w = document.createElement("span"); w.className = "w"; w.textContent = L.who;
+    const x = document.createElement("span"); x.textContent = L.text; if (L.cls) x.className = L.cls;
+    d.append(t, w, x); frag.appendChild(d);
+  }
+  logShown = S.log.length; el.appendChild(frag);
+  while (el.childElementCount > 1200) el.removeChild(el.firstChild);
+  if (nearBottom) el.scrollTop = el.scrollHeight;
+}
+
+/* ---------- C code panel ---------- */
+function renderCode() {
+  const n = cfg.strategy;
+  const desc = n === 1 ? "1 worker: бүх 27 бүсийг нэг thread шалгана" : n === 11 ? "11 worker: 1 мөр + 1 багана + 9 дэд тор" : "27 worker: 9 мөр + 9 багана + 9 дэд тор";
+  const code = `typedef struct {          /* thread-д дамжуулах өгөгдөл */
+    int row, column;      /* шалгаж эхлэх байрлал */
+    int count;            /* дараалсан хэдэн мөр/багана */
+    int index;            /* valid[] дахь байрлал */
+} parameters;
+
+int valid[${n}];             /* i-р worker → valid[i] = 1 | 0 */
+
+void *check_subgrid(void *arg) {
+    parameters *p = (parameters *)arg;
+    int box = (p->row / 3) * 3 + p->column / 3;
+    valid[p->index] = check_region(REG_BOX, box);
+    pthread_exit(NULL);
+}
+
+/* ${desc} */
+for (int i = 0; i < ${n}; i++) {
+    parameters *data = malloc(sizeof(parameters));
+    data->row = plan[i].row;  data->column = plan[i].column;
+    data->count = plan[i].count;  data->index = i;
+    pthread_create(&tid[i], NULL, plan[i].fn, data);
+}
+for (int i = 0; i < ${n}; i++) {
+    pthread_join(tid[i], NULL);  free(params[i]);
+}
+int ok = 1;                      /* parent: массивыг шалгах */
+for (int i = 0; i < ${n}; i++) if (valid[i] != 1) ok = 0;`;
+  const esc = code.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  $("code").innerHTML = esc
+    .replace(/(\/\*[^]*?\*\/)/g, '<span class="cm">$1</span>')
+    .replace(/\b(typedef|struct|int|void|for|if|return)\b(?![^<]*<\/span>)/g, '<span class="kw">$1</span>')
+    .replace(/\b(pthread_create|pthread_join|pthread_exit|malloc|free|check_region)\b(?![^<]*<\/span>)/g, '<span class="fn">$1</span>');
+}
+
+/* ---------- History ---------- */
+const POL = { fifo: "FIFO", rand: "санамс." };
+function srcLabel() { return source.kind === "preset" ? source.preset.name.split(" (")[0].split(" — ")[0] : source.kind === "gen" ? `seed ${source.seed}${source.errors ? "+" + source.errors : ""}` : "засварласан"; }
+function addHistory(sim, auto) {
+  history.push({
+    auto, src: srcLabel(), strategy: sim.cfg.strategy, cores: sim.cfg.cores, cost: sim.cfg.cost,
+    quantum: sim.cfg.quantum ? String(sim.cfg.quantum) : "∞", policy: POL[sim.cfg.policy] + (sim.cfg.policy === "rand" ? " " + sim.cfg.schedSeed : ""),
+    time: sim.final, util: Math.round(100 * sim.busy / (sim.cfg.cores * sim.final)), sw: sim.switches, ok: sim.verdict,
+  });
+  renderHistory();
+}
+function renderHistory() {
+  const tb = $("hist"); tb.textContent = "";
+  history.forEach((h, i) => {
+    const tr = document.createElement("tr"); if (h.auto) tr.className = "auto";
+    const vals = [i + 1, h.src, h.strategy, h.cores, h.cost, h.quantum, h.policy, h.time, h.util + "%", h.sw];
+    vals.forEach((v, j) => { const td = document.createElement("td"); td.textContent = v; if ([0, 2, 3, 4, 5, 7, 8, 9].includes(j)) td.className = "n"; tr.appendChild(td); });
+    const td = document.createElement("td"); td.innerHTML = h.ok ? '<span class="okv">ЗӨВ</span>' : '<span class="badv">БУРУУ</span>'; tr.appendChild(td);
+    tb.appendChild(tr);
+  });
+  const wrap = tb.closest(".tablewrap"); wrap.scrollTop = wrap.scrollHeight;
+}
+$("btnCompare").addEventListener("click", () => { [1, 11, 27].forEach((st) => { const sim = runToEnd(createSim(grid, Object.assign({}, cfg, { strategy: st }), false)); addHistory(sim, false); }); });
+$("btnHistClear").addEventListener("click", () => { history.length = 0; renderHistory(); });
+$("btnCsv").addEventListener("click", () => {
+  const head = "#,Оролт,Стратеги,Цөм,Үүсгэх зардал,Квант,Дараалал,Хугацаа (tick),Ашиглалт (%),Контекст солилт,Дүн";
+  const csv = [head, ...history.map((h, i) => [i + 1, `"${h.src}"`, h.strategy, h.cores, h.cost, h.quantum, h.policy, h.time, h.util, h.sw, h.ok ? "ЗӨВ" : "БУРУУ"].join(","))].join("\n");
+  copyText(csv, $("btnCsv"), $("csvFallback"));
+});
+$("btnCopyCmd").addEventListener("click", () => copyText($("cmdText").textContent, $("btnCopyCmd"), null));
+function copyText(text, btn, fallback) {
+  const done = () => { const o = btn.textContent; btn.textContent = "Хуулсан"; setTimeout(() => (btn.textContent = o), 1400); };
+  const fb = () => {
+    if (fallback) { fallback.hidden = false; fallback.value = text; fallback.focus(); fallback.select(); btn.textContent = "Доорх текстийг хуулна уу"; setTimeout(() => (btn.textContent = "CSV хуулах"), 2500); }
+    else { const r = document.createRange(); r.selectNodeContents($("cmdText")); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); }
+  };
+  try { navigator.clipboard.writeText(text).then(done, fb); } catch (e) { fb(); }
+}
+
+/* ---------- Sweep chart ---------- */
+function renderSweep() {
+  const xs = [1, 2, 3, 4, 5, 6, 7, 8], series = [1, 11, 27].map((st) => ({ st, ys: xs.map((k) => finalTime(grid, Object.assign({}, cfg, { strategy: st, cores: k }))) }));
+  const W = 520, H = 250, L = 46, R = 46, T = 14, B = 40;
+  const ymax = Math.max(...series.flatMap((s) => s.ys)), step = niceStep(ymax, 5), top = Math.ceil(ymax / step) * step;
+  const x = (k) => L + (W - L - R) * (k - 1) / 7, y = (v) => T + (H - T - B) * (1 - v / top);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="CPU цөмийн тооноос хамаарах нийт хугацаа, стратеги тус бүрээр">`;
+  for (let v = 0; v <= top + 0.001; v += step) s += `<line class="ch-grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="ch-ax" x="${L - 6}" y="${y(v) + 3.5}" text-anchor="end">${v}</text>`;
+  xs.forEach((k) => (s += `<text class="ch-ax" x="${x(k)}" y="${H - B + 16}" text-anchor="middle">${k}</text>`));
+  s += `<text class="ch-axt" x="${(L + W - R) / 2}" y="${H - 6}" text-anchor="middle">CPU цөмийн тоо</text>`;
+  s += `<text class="ch-axt" x="12" y="${T + (H - T - B) / 2}" text-anchor="middle" transform="rotate(-90 12 ${T + (H - T - B) / 2})">хугацаа (tick)</text>`;
+  const ends = [];
+  series.forEach((sr) => {
+    s += `<polyline class="ch-line ser-${sr.st}" points="${sr.ys.map((v, i) => `${x(xs[i])},${y(v)}`).join(" ")}"/>`;
+    sr.ys.forEach((v, i) => (s += `<circle class="ser-${sr.st}" cx="${x(xs[i])}" cy="${y(v)}" r="${i === 7 ? 4 : 2.5}" style="stroke:none"><title>${sr.st} thread, ${xs[i]} цөм: ${v} tick</title></circle>`));
+    ends.push({ st: sr.st, v: sr.ys[7], yy: y(sr.ys[7]) });
+  });
+  ends.sort((a, b) => a.yy - b.yy);
+  for (let i = 1; i < ends.length; i++) if (ends[i].yy - ends[i - 1].yy < 13) ends[i].yy = ends[i - 1].yy + 13;
+  ends.forEach((e) => (s += `<text class="ch-end" x="${x(8) + 8}" y="${e.yy + 4}">${e.st}t</text>`));
+  $("sweep").innerHTML = s + "</svg>" + `<div class="legend" style="margin-top:6px"><span style="--cc:var(--s1)"><i></i>1 thread</span><span style="--cc:var(--s11)"><i></i>11 thread</span><span style="--cc:var(--s27)"><i></i>27 thread</span></div>`;
+  $("sweepSub").textContent = `зардал ${cfg.cost} · квант ${cfg.quantum || "∞"} · ${POL[cfg.policy]}`;
+}
+
+/* ---------- Real C measurements (энэ сессийн ./sudoku_validator -b 2000) ---------- */
+function renderReal() {
+  const data = [{ m: "-t 1", avg: 47.62, min: 8.26, v: "--s1" }, { m: "-t 11", avg: 291.66, min: 162.29, v: "--s11" }, { m: "-t 27", avg: 672.37, min: 415.89, v: "--s27" }];
+  const mx = 700;
+  $("cbars").innerHTML = data.map((d) => `<div class="cbar"><span>${d.m}</span><span class="track"><b style="width:${(100 * d.avg / mx).toFixed(1)}%;background:var(${d.v})"></b><i style="left:${(100 * d.min / mx).toFixed(1)}%"></i></span><span>${d.avg.toFixed(1)} мкс</span></div>`).join("");
+}
+
+/* ---------- Init ---------- */
+paintGridValues();
+renderCode(); renderReal();
+[1, 11, 27].forEach((st) => addHistory(runToEnd(createSim(grid, Object.assign({}, cfg, { strategy: st }), false)), true));
+freshSim();
+recorded = true; runToEnd(S); render(); stop();
+renderSweep();
+let rz; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(renderGantt, 120); });
+})();
+</script>
