@@ -18,17 +18,20 @@ def check(payload):
     if not BINARY.is_file():
         raise FileNotFoundError('C engine not built. Run make (macOS/Linux) or build_windows.bat (Windows).')
     grid_text = '\n'.join(''.join(str(x) for x in board[r*9:(r+1)*9]) for r in range(9)) + '\n'
-    run = subprocess.run([str(BINARY), '-f', '-', '-t', str(mode)], input=grid_text, text=True,
-                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=8, cwd=ROOT)
+    run = subprocess.run([str(BINARY), '-f', '-', '-t', str(mode)], input=grid_text,
+                         encoding='utf-8', errors='replace', capture_output=True,
+                         timeout=8, cwd=ROOT)
+    output = run.stdout or ''
+    error_output = run.stderr or ''
     if run.returncode not in (0, 1):
-        raise RuntimeError(run.stderr.strip() or run.stdout.strip() or 'C програм алдаа буцаалаа')
-    match = VALID.search(run.stdout)
+        raise RuntimeError(error_output.strip() or output.strip() or f'C engine exited with code {run.returncode}')
+    match = VALID.search(output)
     if not match:
-        raise RuntimeError('C программын valid[] үр дүнг уншиж чадсангүй.')
+        raise RuntimeError('C engine produced no valid[] output. ' + (error_output.strip() or output[-400:] or 'No output received.'))
     flags = [int(v) for v in match.group(1).split()]
     if len(flags) != mode:
         raise RuntimeError('Worker-ийн үр дүнгийн тоо зөрлөө.')
-    elapsed = TIME.search(run.stdout)
+    elapsed = TIME.search(output)
     # Cell-level errors are derived separately for UI highlighting; the verdict is from C.
     bad = set()
     for kind in ('row', 'col', 'box'):
