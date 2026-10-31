@@ -43,7 +43,10 @@ jobs:
           node-version: '22'
 
       - name: Build native Pthreads validator
-        run: make
+        run: |
+          make clean
+          make
+          test -x ./sudoku_validator
 
       - name: Check dashboard JavaScript and UI
         run: python3 -m unittest discover -s tests -p test_dashboard_ui.py -v
