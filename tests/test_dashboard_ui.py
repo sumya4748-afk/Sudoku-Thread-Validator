@@ -28,7 +28,7 @@ class DashboardTests(unittest.TestCase):
     @unittest.skipUnless(shutil.which("node"), "Node.js unavailable")
     def test_javascript_syntax(self):
         proc = subprocess.run(["node", "--check", "--input-type=commonjs"],
-                              input=self.script, text=True, capture_output=True)
+                              input=self.script, text=True, encoding='utf-8', capture_output=True)
         self.assertEqual(proc.returncode, 0, proc.stderr)
 
     @unittest.skipUnless(shutil.which("node"), "Node.js unavailable")
@@ -52,7 +52,7 @@ for(const bad of [solved.slice(1), solved+'2', solved.slice(0,10)+'x'+solved.sli
   assert.throws(()=>parseSudokuFile(bad));
 }
 """
-        proc = subprocess.run(["node", "-"], input=js, text=True, capture_output=True)
+        proc = subprocess.run(["node", "-"], input=js, text=True, encoding='utf-8', capture_output=True)
         self.assertEqual(proc.returncode, 0, proc.stderr)
 
 
