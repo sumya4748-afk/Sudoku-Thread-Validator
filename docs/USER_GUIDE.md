@@ -9,6 +9,15 @@
 3. Задалсан хавтасны `SudokuValidation.exe`-г нээнэ. Python, GCC суулгах шаардлагагүй.
 4. Хөтөч `http://127.0.0.1:8765/dashboard.html` хаягаар нээгдэнэ. Програмын серверийн цонхыг ажиллаж байх хугацаанд бүү хаа.
 
+## macOS дээр хоёр дараад ажиллуулах (Apple Silicon)
+1. GitHub Actions-ийн **Build macOS Sudoku app** workflow-ийн хамгийн сүүлийн ногоон ✓ run-ээс `SudokuValidation_Mac_Ready` artifact татна.
+2. Татсан artifact ZIP-ийг задлаад, доторх `SudokuValidation_Mac_Ready.zip`-ийг дахин задлах шаардлагатай байж болно.
+3. `SudokuValidation.app`-ийг Applications хавтас руу зөөж, хоёр дарж нээнэ. Browser дээр `http://127.0.0.1:8765/dashboard.html` нээгдэнэ. Python, GCC, Terminal шаардлагагүй.
+4. Apple-ийн хөгжүүлэгчийн гарын үсэггүй тул macOS анхны удаа нээхийг хориглож магадгүй. **System Settings → Privacy & Security → Open Anyway** сонголт гарсан тохиолдолд зөвхөн GitHub-ийн өөрийн build гэдгийг шалгасны дараа нээнэ. Хамгаалалтыг бүхэлд нь унтраах хэрэггүй.
+5. Дууссаны дараа Dock эсвэл Force Quit-ээр SudokuValidation аппыг хааж локал серверийг зогсооно.
+
+**Тэмдэглэл:** Одоогийн GitHub macOS build нь Apple Silicon (arm64) runner дээр хийгддэг. Intel Mac дээр энэ ZIP ажиллана гэж батлаагүй. Автомат smoke test амжилттай боловч macOS GUI, Gatekeeper болон browser-ийн ажиллагааг бодит хэрэглэгчийн Mac дээр нэмэлтээр шалгах хэрэгтэй.
+
 ## Sudoku оруулах
 - Самбарын нүдэнд 1–9 цифр бичнэ. Сум, Backspace, Undo, Clear ашиглаж болно.
 - **Зөв жишээ**, **Алдаатай жишээ** товчоор туршина.
