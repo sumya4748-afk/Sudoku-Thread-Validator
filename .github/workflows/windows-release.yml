@@ -1,0 +1,40 @@
+name: Build Windows standalone Sudoku
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'sudoku_validator.c'
+      - 'server.py'
+      - 'launch_standalone.py'
+      - 'dashboard.html'
+      - '.github/workflows/windows-release.yml'
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: mingw-w64-ucrt-x86_64-gcc
+      - name: Compile C engine
+        shell: msys2 {0}
+        run: gcc -std=c11 -O2 -Wall -Wextra -pthread sudoku_validator.c -o sudoku_validator.exe
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Test bridge on Windows
+        shell: pwsh
+        run: python -m unittest discover -s tests -v
+      - name: Package app
+        shell: pwsh
+        run: |
+          python -m pip install pyinstaller
+          pyinstaller --noconfirm --clean --onedir --console --name SudokuValidation --add-data "dashboard.html;." --add-binary "sudoku_validator.exe;." --add-data "server.py;." --hidden-import server launch_standalone.py
+          Copy-Item README.md dist/SudokuValidation/README.md
+          Compress-Archive -Path dist/SudokuValidation -DestinationPath SudokuValidation_Windows_Ready.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SudokuValidation_Windows_Ready
+          path: SudokuValidation_Windows_Ready.zip
