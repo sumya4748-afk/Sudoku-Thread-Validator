@@ -1,0 +1,74 @@
+name: macOS and Linux checks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'sudoku_validator.c'
+      - 'Makefile'
+      - 'server.py'
+      - 'dashboard.html'
+      - 'tests/**'
+      - '.github/workflows/cross-platform.yml'
+  pull_request:
+    paths:
+      - 'sudoku_validator.c'
+      - 'Makefile'
+      - 'server.py'
+      - 'dashboard.html'
+      - 'tests/**'
+      - '.github/workflows/cross-platform.yml'
+  workflow_dispatch:
+
+jobs:
+  verify:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Build native Pthreads validator
+        run: make
+
+      - name: Check dashboard JavaScript and UI
+        run: python3 -m unittest discover -s tests -p test_dashboard_ui.py -v
+
+      - name: Check real C engine via Python bridge in all modes
+        run: |
+          python3 - <<'PY'
+          from server import check
+          solved = '534678912672195348198342567859761423426853791713924856961537284287419635345286179'
+          good = [int(c) for c in solved]
+          bad = good.copy()
+          bad[0] = bad[1]
+          for mode in (1, 11, 27):
+              valid = check({'board': good, 'mode': mode})
+              assert valid['valid'] is True, (mode, valid)
+              assert len(valid['workers']) == mode, (mode, valid)
+              assert all(w['ok'] for w in valid['workers']), (mode, valid)
+              invalid = check({'board': bad, 'mode': mode})
+              assert invalid['valid'] is False, (mode, invalid)
+              assert invalid['badCells'], (mode, invalid)
+              print(f'{mode} worker(s): valid and invalid cases passed')
+          PY
+
+      - name: Check native executable CLI
+        run: |
+          ./sudoku_validator -t 11
+          ./sudoku_validator -t 27
+          ./sudoku_validator -t 1
