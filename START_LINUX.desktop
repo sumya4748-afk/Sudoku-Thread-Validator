@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Sudoku Validation
+Comment=Start Sudoku Validation Dashboard
+Exec=sh -c 'cd "$(dirname "$1")" && ./START_LINUX.sh' sh %k
+Terminal=true
+Categories=Education;

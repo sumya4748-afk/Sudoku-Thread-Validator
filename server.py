@@ -5,7 +5,7 @@ from pathlib import Path
 import json, re, subprocess, sys
 
 ROOT = Path(__file__).resolve().parent
-BINARY = ROOT / 'sudoku_validator'
+BINARY = ROOT / ('sudoku_validator.exe' if sys.platform == 'win32' else 'sudoku_validator')
 VALID = re.compile(r'valid\[\] = \[([01 ]+)\]')
 TIME = re.compile(r'Хугацаа: ([\d.]+) мкс')
 
@@ -16,7 +16,7 @@ def check(payload):
     if type(mode) is not int or mode not in (1, 11, 27):
         raise ValueError('Горим 1, 11, эсвэл 27 байх ёстой.')
     if not BINARY.is_file():
-        raise FileNotFoundError('C программ хөрвүүлэгдээгүй байна. Terminal дээр make ажиллуулна уу.')
+        raise FileNotFoundError('C engine not built. Run make (macOS/Linux) or build_windows.bat (Windows).')
     grid_text = '\n'.join(''.join(str(x) for x in board[r*9:(r+1)*9]) for r in range(9)) + '\n'
     run = subprocess.run([str(BINARY), '-f', '-', '-t', str(mode)], input=grid_text, text=True,
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=8, cwd=ROOT)
