@@ -1,0 +1,72 @@
+name: Build macOS Sudoku app
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'sudoku_validator.c'
+      - 'server.py'
+      - 'dashboard.html'
+      - 'mac_app_launcher.py'
+      - '.github/workflows/macos-release.yml'
+
+jobs:
+  macos:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile native C engine
+        run: |
+          rm -f sudoku_validator
+          clang -std=c11 -O2 -Wall -Wextra -pthread sudoku_validator.c -o sudoku_validator
+          ./sudoku_validator -t 11
+      - name: Package macOS application
+        run: |
+          python3 -m pip install pyinstaller
+          python3 -m PyInstaller --noconfirm --clean --windowed --onedir --name SudokuValidation --add-data 'dashboard.html:.' --add-binary 'sudoku_validator:.' --hidden-import server mac_app_launcher.py
+          test -d dist/SudokuValidation.app
+          test -x dist/SudokuValidation.app/Contents/MacOS/SudokuValidation
+      - name: Test packaged app engine and server bridge
+        run: |
+          python3 - <<'PY'
+          import os, subprocess, sys, time, urllib.request
+          from pathlib import Path
+          app = Path("dist/SudokuValidation.app/Contents/MacOS/SudokuValidation")
+          p = subprocess.Popen([str(app.resolve())], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+          try:
+              url = "http://127.0.0.1:8765/dashboard.html"
+              for attempt in range(40):
+                  if p.poll() is not None:
+                      raise RuntimeError(f"App exited early: {p.returncode}")
+                  try:
+                      with urllib.request.urlopen(url, timeout=1) as r:
+                          assert b"<html" in r.read().lower()
+                      break
+                  except Exception:
+                      time.sleep(0.5)
+              else:
+                  raise RuntimeError("Bundled dashboard did not start")
+              import json
+              board = [int(c) for c in "534678912672195348198342567859761423426853791713924856961537284287419635345286179"]
+              for mode in (1, 11, 27):
+                  data = json.dumps({"board": board, "mode": mode}).encode()
+                  req = urllib.request.Request("http://127.0.0.1:8765/api/validate", data=data, headers={"Content-Type":"application/json"})
+                  with urllib.request.urlopen(req, timeout=10) as r:
+                      result = json.load(r)
+                  assert result["valid"] and len(result["workers"]) == mode, result
+                  print(f"Bundled app: {mode} workers passed")
+          finally:
+              p.terminate()
+              try: p.wait(timeout=5)
+              except subprocess.TimeoutExpired: p.kill()
+          PY
+      - name: Create distributable ZIP
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent dist/SudokuValidation.app SudokuValidation_Mac_Ready.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SudokuValidation_Mac_Ready
+          path: SudokuValidation_Mac_Ready.zip
