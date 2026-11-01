@@ -588,6 +588,7 @@ int main(int argc, char *argv[]) {
         verbose = 0;
         int modes[3] = {1, 11, 27};
         double base_avg = 0;
+        int all_modes_valid = 1;
         printf("Хурдны харьцуулалт: %d давталт, оролт: %s\n", bench, source);
         printf("  Горим   Thread  Дундаж(мкс)  Хамгийн бага  Хамгийн их  Харьцаа  Дүн\n");
         for (int m = 0; m < 3; m++) {
@@ -599,6 +600,7 @@ int main(int argc, char *argv[]) {
                 if (us < mn) mn = us;
                 if (us > mx) mx = us;
             }
+            if (!res) all_modes_valid = 0;
             double avg = sum / bench;
             if (m == 0) base_avg = avg;
             printf("  -t %-4d %-6d  %11.2f  %12.2f  %10.2f  %6.2fx  %s\n", modes[m], nw, avg, mn, mx,
@@ -606,7 +608,7 @@ int main(int argc, char *argv[]) {
         }
         printf("  (Харьцаа = тухайн горимын дундаж хугацаа / 1-thread горимын дундаж хугацаа)\n");
         verbose = saved_verbose;
-        return 0;
+        return all_modes_valid ? 0 : 1;
     }
 
     /* --- Шалгалт --- */
