@@ -46,7 +46,7 @@ echo "534678912672195348..." | ./sudoku_validator -f -
 **Параметр дамжуулах.** Parent `parameters { row, column, count, index }` бүтцийг
 `malloc`-оор үүсгэж `pthread_create()`-ийн 4-р аргументаар дамжуулна. `join` хийсний дараа `free` хийнэ.
 
-**Үр дүн буцаах.** Глобал `int valid[N]`. i-р worker зөвхөн `valid[i]`-д бичдэг тул
+**Үр дүн буцаах.** Глобал `int valid[MAX_WORKERS]` (`MAX_WORKERS = 27`). i-р worker зөвхөн `valid[i]`-д бичдэг тул
 mutex шаардлагагүй; `pthread_join()` нь бичилт parent-д харагдахыг баталгаажуулна.
 Массив 0-ээр эхэлдэг тул ажиллаж чадаагүй worker автоматаар "буруу" гэж тооцогдоно.
 
