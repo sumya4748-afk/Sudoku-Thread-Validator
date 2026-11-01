@@ -1,6 +1,5 @@
 # Sudoku Solution Validator (Pthreads)
 
-Operating System Concepts, 4-р бүлэг, Programming Project 1.
 9×9 судокугийн шийдэл зөв эсэхийг олон worker thread-ээр зэрэгцээ шалгана.
 
 ## Бүтэц
@@ -86,44 +85,38 @@ ready queue-ийн дараалал зэрэг параметрээр thread-и�
 
 ---
 
-## Сайжруулсан хувилбар — Sudoku Thread Observatory
+## Dashboard болон бэлэн хувилбарууд
 
-Анхны багийн C/Pthreads validator, `ui/sudoku_threads.html` симуляцыг хадгалсан.
-Нэмэлтээр **`dashboard.html` + `server.py`** хийсэн: браузерын 9×9 самбараас JSON
-илгээхэд локал Python HTTP сервер **бодит хөрвүүлсэн C binary**-г subprocess-ээр
-ажиллуулж, `valid[]`, exit code, бодит хэмжсэн микросекундыг UI-д харуулна.
+Үндсэн интерфэйс нь `dashboard.html`. `server.py` нь локал HTTP bridge бөгөөд C/Pthreads хөдөлгүүрийг ажиллуулж бодит шалгалтын үр дүнг буцаана. `ui/sudoku_threads.html` нь тусдаа сургалтын симуляц.
 
-### macOS / Linux
+### Windows — бэлэн EXE
 
-```bash
-make
+[Build Windows standalone Sudoku](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/actions/workflows/windows-release.yml) workflow-ийн хамгийн сүүлийн амжилттай run-ээс `SudokuValidation_Windows_Ready` artifact татна. ZIP-үүдийг задлаад `SudokuValidation.exe` ажиллуулна. Python болон GCC суулгах шаардлагагүй.
+
+### macOS — бэлэн APP (Apple Silicon)
+
+[Build macOS Sudoku app](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/actions/workflows/macos-release.yml) workflow-ийн амжилттай run-ээс `SudokuValidation_Mac_Ready` artifact татна. ZIP-үүдийг задлаад `SudokuValidation.app` нээнэ. Apple Developer ID гарын үсэг/notarization байхгүй тул анх удаа **System Settings → Privacy & Security → Open Anyway** зөвшөөрөл шаардаж магадгүй. Intel Mac дээр шалгаагүй.
+
+### macOS / Linux — эх кодоос
+
+Python 3, C compiler, make шаардлагатай. Төслийн хавтсанд:
+
+```sh
+make clean && make
 python3 server.py
 ```
 
-Chrome/Safari дээр `http://127.0.0.1:8765/dashboard.html` нээнэ.
+Хөтөч дээр `http://127.0.0.1:8765/dashboard.html` нээнэ. Ubuntu/Debian-д эхлээд `sudo apt install build-essential python3` хэрэгтэй байж болно.
 
-### Windows
+### Тест
 
-Native Windows-д POSIX pthread API шууд байдаггүй. **WSL (Ubuntu)** суулгаад
-WSL Terminal-д `sudo apt install build-essential python3` (хэрэгтэй бол) ажиллуулна.
-Дараа нь WSL дотор төслийн хавтсанд `make && python3 server.py` гэж ажиллуулна.
-Windows браузераас дээрх `127.0.0.1` хаягийг нээж болно (WSL localhost forwarding идэвхтэй үед).
-Native Windows дээр шууд `py server.py` гэж ажиллуулахад Linux binary ажиллахгүй.
-
-### Шалгах
-
-```bash
-python3 -m unittest discover -s tests -p 'test_*.py' -v
-STRESS=30 bash run_tests.sh
+```sh
+python3 -m unittest discover -s tests -v
+bash run_tests.sh
 ```
 
-`make test` нь sanitizer-уудыг шаарддаг тул macOS болон зарим Linux орчинд
-ThreadSanitizer ажиллахгүй байж болно. Үүнийг тест амжилттай болсон гэж тооцохгүй.
+Windows, macOS, Linux-ийн CI шалгалтыг [GitHub Actions](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/actions) хэсгээс харна. Тестийн тоо, benchmark үр дүн нь орчин, хувилбар бүрээр өөрчлөгдөж болно.
 
-### Чухал ялгаа
+### Дэлгэрэнгүй заавар
 
-- `dashboard.html`: C pthread-үүдийг **бодитоор** ажиллуулж, хэмжсэн хугацаа/үр дүнг харуулна.
-- `ui/sudoku_threads.html`: Gantt, CPU queue, context switching-ийг **загварчилдаг** сургалтын симуляц.
-- `server.py`: зөвхөн `127.0.0.1` дээр сонсдог; нийтийн веб сервер биш.
-- Python сервер нь C программыг орлохгүй, зөвхөн интерфэйс ба C binary-ийн хоорондын гүүр.
-- Өмнөх эх кодын зохиогчийн хувь нэмрийг багийн тайланд тодорхой бичих ёстой.
+[Хэрэглэгчийн гарын авлага](docs/USER_GUIDE.md). Dashboard-ийн **Алхмаар үзүүлэх** нь C-ээс буцсан үр дүнг тайлбарлан дахин тоглуулдаг; OS thread scheduler-ийн live trace биш. Сервер зөвхөн `127.0.0.1` дээр ажиллана.
