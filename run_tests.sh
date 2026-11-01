@@ -34,10 +34,15 @@ for mode in 1 11 27; do
   expect_code 2 "файл байхгүй"          -t $mode -f tests/no_such_file.txt
   expect_code 1 "-s 5,5,0"              -t $mode -s 5,5,0
   expect_code 0 "stdin"                 -t $mode -f - < tests/valid_compact.txt
+  expect_code 0 "UTF-8 BOM"             -t $mode -f tests/valid_bom.txt
 done
 expect_code 2 "буруу горим -t 5" -t 5
 expect_code 2 "-s trailing garbage" -s 1,1,6junk
 expect_code 2 "-s overflow" -s 999999999999999999999,1,6
+expect_code 2 "-s negative" -s -1,1,6
+expect_code 2 "-s extra comma" -s 1,1,6,
+expect_code 2 "-s missing value" -s 1,1,
+expect_code 2 "-s second-field overflow" -s 1,999999999999999999999,6
 expect_code 2 "буруу -s"         -s 10,1,1
 expect_code 2 "-e abc"           -e abc
 expect_code 2 "-e сөрөг"         -e -3
