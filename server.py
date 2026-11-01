@@ -64,6 +64,9 @@ def check(payload):
             'engine': 'C11 + POSIX pthreads', 'note': 'Хугацаа нь бодит C thread-ийн хэмжилт; сургалтын симуляцын tick биш.'}
 
 class Handler(SimpleHTTPRequestHandler):
+    # Explicit UTF-8 for browser HTML pages containing Mongolian text.
+    extensions_map = {**SimpleHTTPRequestHandler.extensions_map, '.html': 'text/html; charset=utf-8'}
+
     # Only explicitly published HTML is readable; no repository directory listing.
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT), **kwargs)
