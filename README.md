@@ -6,7 +6,7 @@
 
 | Файл | Агуулга |
 |---|---|
-| `sudoku_validator.c` | Үндсэн программ (C11 + Pthreads; одоогоор repository-ийн root-д байрлана) |
+| `sudoku_validator.c` | Үндсэн программ (C11 + Pthreads; build-д ашиглагддаг үндсэн файл) |
 | `Makefile` | `make`, `make tsan`, `make asan`, `make test` |
 | `run_tests.sh` | Автомат тест (тохиолдлын тоо хувилбар/орчноос хамаарна) |
 | `tests/*.txt` | Зөв, буруу, алдаатай оролтын жишээнүүд |
@@ -133,4 +133,6 @@ Windows, macOS, Linux-ийн CI шалгалтыг [GitHub Actions](https://gith
 - **Сургалтын симуляц:** `ui/sudoku_threads.html` дахь CPU core, ready queue, Gantt болон tick-ийн дүрслэл нь thread scheduling-ийн **загварчилсан** тайлбар бөгөөд бодит үйлдлийн системийн scheduler trace эсвэл C thread-үүдийн хэмжсэн хугацаа биш.
 - **Хугацааны хэмжилт:** Бодит benchmark-ийн тоонуудыг C engine-ээс авна; симуляцын tick-тэй харьцуулж бодит хэмжилт гэж үзэхгүй.
 
-**Repository бүтэц:** Одоогийн үндсэн эх код root дахь `sudoku_validator.c` файлд байгаа. Багшийн заасан `src/` бүтцэд хараахан шилжүүлээгүй; build, CI, Windows/macOS багцын замуудыг зэрэг шинэчлэх шаардлагатай.
+**Repository бүтэц:** `src/sudoku_validator.c` нь root дахь `sudoku_validator.c`-ийн ижил агуулгатай хуулбар. Одоогийн build, CI, Windows/macOS багцууд root дахь файлыг ашигласан хэвээр тул ажиллаж буй замуудыг өөрчлөөгүй. Код өөрчлөхдөө хоёр файлыг ижил байлгах шаардлагатай; бүрэн шилжүүлэлт хийгдээгүй.
+
+**Тайлангийн тэмдэглэл:** [AI ашиглалт ба бодит UI/симуляцын ялгаа](docs/REPORT_AI_UI_NOTES.md) — энэ тайлбарыг үндсэн `docs/Report.pdf`-д нэгтгэх шаардлагатай.
