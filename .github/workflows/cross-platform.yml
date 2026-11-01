@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'sudoku_validator.c'
+      - 'README.md'
       - 'Makefile'
       - 'server.py'
       - 'dashboard.html'
