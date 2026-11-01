@@ -15,10 +15,10 @@ server.BINARY = BASE / "sudoku_validator"
 def main():
     try:
         httpd = ThreadingHTTPServer(("127.0.0.1", 8765), server.Handler)
-    except OSError:
-        # Another instance is already running; open the existing local dashboard.
-        webbrowser.open("http://127.0.0.1:8765/dashboard.html")
-        return 0
+    except OSError as exc:
+        # A busy port does not prove that the other service is this Sudoku app.
+        print(f"Cannot start Sudoku: port 8765 is unavailable ({exc}).", flush=True)
+        return 2
 
     url = "http://127.0.0.1:8765/dashboard.html"
     threading.Timer(0.8, lambda: webbrowser.open(url)).start()
