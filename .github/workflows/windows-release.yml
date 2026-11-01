@@ -1,10 +1,16 @@
 name: Build Windows standalone Sudoku
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - '**'
   push:
     paths:
       - 'sudoku_validator.c'
       - 'README.md'
+      - 'Makefile'
+      - 'run_tests.sh'
+      - 'launch.py'
       - 'server.py'
       - 'launch_standalone.py'
       - 'dashboard.html'
@@ -30,16 +36,39 @@ jobs:
       - name: Test bridge on Windows
         shell: pwsh
         run: python -m unittest discover -s tests -v
-      - name: Check dashboard JavaScript and file parser
-        shell: pwsh
-        run: python -m unittest discover -s tests -p test_dashboard_ui.py -v
       - name: Package app
         shell: pwsh
         run: |
           python -m pip install pyinstaller
-          pyinstaller --noconfirm --clean --onedir --console --name SudokuValidation --add-data "dashboard.html;." --add-binary "sudoku_validator.exe;." --add-data "server.py;." --hidden-import server launch_standalone.py
+          pyinstaller --noconfirm --clean --onedir --console --name SudokuValidation --add-data "dashboard.html;." --add-binary "sudoku_validator.exe;." --add-data "server.py;." --add-data "ui;ui" --hidden-import server launch_standalone.py
           Copy-Item README.md dist/SudokuValidation/README.md
           Compress-Archive -Path dist/SudokuValidation -DestinationPath SudokuValidation_Windows_Ready.zip
+      - name: Smoke-test packaged Windows executable
+        shell: pwsh
+        run: |
+          $app = (Resolve-Path 'dist/SudokuValidation/SudokuValidation.exe').Path
+          $proc = Start-Process -FilePath $app -PassThru
+          try {
+            $ready = $false
+            for ($i = 0; $i -lt 40; $i++) {
+              if ($proc.HasExited) { throw "Packaged EXE exited early" }
+              try {
+                $page = Invoke-WebRequest 'http://127.0.0.1:8765/dashboard.html' -TimeoutSec 2
+                if ($page.StatusCode -eq 200) { $ready = $true; break }
+              } catch { Start-Sleep -Milliseconds 500 }
+            }
+            if (-not $ready) { throw "Packaged EXE did not serve dashboard" }
+            $board = "534678912672195348198342567859761423426853791713924856961537284287419635345286179".ToCharArray() | ForEach-Object { [int]::Parse([string]$_) }
+            foreach ($mode in @(1, 11, 27)) {
+              $body = @{ board = @($board); mode = $mode } | ConvertTo-Json -Compress -Depth 5
+              $result = Invoke-RestMethod 'http://127.0.0.1:8765/api/validate' -Method Post -ContentType 'application/json' -Body $body
+              if (-not $result.valid -or $result.workers.Count -ne $mode) { throw "Packaged EXE mode $mode failed" }
+            }
+            $sim = Invoke-WebRequest 'http://127.0.0.1:8765/ui/sudoku_threads.html' -TimeoutSec 3
+            if ($sim.StatusCode -ne 200) { throw "Bundled simulation missing" }
+          } finally {
+            Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+          }
       - uses: actions/upload-artifact@v4
         with:
           name: SudokuValidation_Windows_Ready
