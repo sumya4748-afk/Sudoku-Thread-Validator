@@ -293,16 +293,28 @@ static int load_grid(const char *path) {
     FILE *f = is_stdin ? stdin : fopen(path, "r");
     if (!f) { perror(path); return -1; }
     int count = 0, ch, line = 1, in_comment = 0, cells = 0, rc = 0;
-    while ((ch = fgetc(f)) != EOF) {
+    /* Accept an optional UTF-8 BOM only at the beginning of the input. */
+    ch = fgetc(f);
+    if (ch == 0xEF) {
+        int second = fgetc(f), third = fgetc(f);
+        if (second == 0xBB && third == 0xBF) {
+            ch = fgetc(f);
+        } else {
+            fprintf(stderr, "Оролтын алдаа: UTF-8 BOM буруу байна\\n");
+            rc = -1;
+            ch = EOF;
+        }
+    }
+    while (rc == 0 && ch != EOF) {
         if (ch == '\n') {
             if (check_line_shape(line, cells) != 0) { rc = -1; break; }
-            line++; in_comment = 0; cells = 0; continue;
+            line++; in_comment = 0; cells = 0; { ch = fgetc(f); continue; }
         }
-        if (in_comment) continue;
-        if (ch == '#') { in_comment = 1; continue; }
+        if (in_comment) { ch = fgetc(f); continue; }
+        if (ch == '#') { in_comment = 1; { ch = fgetc(f); continue; } }
         if (ch == ' ' || ch == '\t' || ch == '\r' || ch == ',' || ch == '|' ||
             ch == '-' || ch == '+' || ch == ';')
-            continue;
+            { ch = fgetc(f); continue; }
         int v;
         if (ch >= '0' && ch <= '9') v = ch - '0';
         else if (ch == '.' || ch == '_') v = 0;
@@ -316,6 +328,7 @@ static int load_grid(const char *path) {
         }
         sudoku[count / N][count % N] = v;
         count++; cells++;
+        ch = fgetc(f);
     }
     if (rc == 0 && check_line_shape(line, cells) != 0) rc = -1;
     if (!is_stdin) fclose(f);
@@ -498,10 +511,27 @@ int main(int argc, char *argv[]) {
             seed = num; break;
         case 'e': if (parse_num("e", optarg, 0, N * N, &num)) return 2; errors = (int)num; break;
         case 's': {
-            int r, c, v;
-            char tail;
-            if (sscanf(optarg, "%d,%d,%d%c", &r, &c, &v, &tail) != 3 ||
-                r < 1 || r > 9 || c < 1 || c > 9 || v < 0 || v > 9) {
+            int r, c, v, parsed[3];
+            const char *cursor = optarg;
+            int good = 1;
+            for (int field = 0; field < 3; field++) {
+                char *end = NULL;
+                errno = 0;
+                if (*cursor < '0' || *cursor > '9') { good = 0; break; }
+                long value = strtol(cursor, &end, 10);
+                if (errno == ERANGE || end == cursor || value < (field == 2 ? 0 : 1) || value > 9) {
+                    good = 0; break;
+                }
+                parsed[field] = (int)value;
+                if (field < 2) {
+                    if (*end != ',') { good = 0; break; }
+                    cursor = end + 1;
+                } else if (*end != '\0') {
+                    good = 0;
+                }
+            }
+            if (good) { r = parsed[0]; c = parsed[1]; v = parsed[2]; }
+            if (!good) {
                 fprintf(stderr, "-s буруу: '%s' (жишээ: -s 3,5,7)\n", optarg);
                 return 2;
             }
