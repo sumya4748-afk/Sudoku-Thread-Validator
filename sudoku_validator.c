@@ -256,7 +256,7 @@ static int run_validation(int mode, int *n_workers, double *elapsed_us) {
 
     for (int i = 0; i < n; i++) {
         int rc = pthread_join(tids[i], NULL);
-        if (rc != 0) fprintf(stderr, "pthread_join алдаа (#%d): %s\n", i, strerror(rc));
+        if (rc != 0) {\n            fprintf(stderr, "pthread_join алдаа (#%d): %s\n", i, strerror(rc));\n            /* Join бүтэлгүйтвэл worker-ийн санах ойг чөлөөлж, үр дүнг найдвартай гэж үзэж болохгүй. */\n            exit(2);\n        }
         free(params[i]);
     }
     if (verbose) printf("[main] бүх %d worker pthread_join-оор дууслаа\n", n);
