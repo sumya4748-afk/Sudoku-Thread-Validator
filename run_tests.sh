@@ -36,6 +36,9 @@ for mode in 1 11 27; do
   expect_code 0 "stdin"                 -t $mode -f - < tests/valid_compact.txt
   expect_code 0 "UTF-8 BOM"             -t $mode -f tests/valid_bom.txt
 done
+# Benchmark must preserve Sudoku validity in its process exit status.
+expect_code 0 "benchmark зөв судоку" -b 1 -f tests/valid_fig426.txt
+expect_code 1 "benchmark буруу судоку" -b 1 -f tests/invalid_one_cell.txt
 expect_code 2 "буруу горим -t 5" -t 5
 expect_code 2 "-s trailing garbage" -s 1,1,6junk
 expect_code 2 "-s overflow" -s 999999999999999999999,1,6
