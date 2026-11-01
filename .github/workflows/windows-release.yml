@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'sudoku_validator.c'
+      - 'README.md'
       - 'server.py'
       - 'launch_standalone.py'
       - 'dashboard.html'
