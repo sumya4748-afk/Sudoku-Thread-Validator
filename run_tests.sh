@@ -36,6 +36,8 @@ for mode in 1 11 27; do
   expect_code 0 "stdin"                 -t $mode -f - < tests/valid_compact.txt
 done
 expect_code 2 "буруу горим -t 5" -t 5
+expect_code 2 "-s trailing garbage" -s 1,1,6junk
+expect_code 2 "-s overflow" -s 999999999999999999999,1,6
 expect_code 2 "буруу -s"         -s 10,1,1
 expect_code 2 "-e abc"           -e abc
 expect_code 2 "-e сөрөг"         -e -3
@@ -88,8 +90,11 @@ for SAN in tsan asan; do
     for ((s=1; s<=50; s++)); do
       for mode in 1 11 27; do
         out=$("$SB" -q -t $mode -g $s -e $((s % 3)) 2>&1)
-        if echo "$out" | grep -qE "WARNING: ThreadSanitizer|ERROR: AddressSanitizer|runtime error|LeakSanitizer"; then
-          bad "$SAN -g $s -t $mode"; echo "$out" | head -20
+        rc=$?
+        expected=0
+        [ $((s % 3)) -eq 0 ] || expected=1
+        if [ "$rc" -ne "$expected" ] || echo "$out" | grep -qE "WARNING: ThreadSanitizer|ERROR: AddressSanitizer|runtime error|LeakSanitizer"; then
+          bad "$SAN -g $s -t $mode: exit $rc, expected $expected"; echo "$out" | head -20
         else ok; fi
       done
     done
