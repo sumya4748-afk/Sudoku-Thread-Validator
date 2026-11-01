@@ -24,6 +24,13 @@ class DashboardTests(unittest.TestCase):
         self.assertIn("function playDemo()", self.script)
         self.assertNotIn('id="sudoku-file"', self.html)
 
+    def test_async_board_consistency_guards(self):
+        self.assertIn("grid.querySelectorAll('input').forEach(x=>x.disabled=true)", self.script)
+        self.assertIn("grid.querySelectorAll('input').forEach(x=>x.disabled=false)", self.script)
+        self.assertIn("if(revision!==boardRevision)return", self.script)
+        self.assertIn("snapshot=[...board],revision=boardRevision", self.script)
+        self.assertIn("const revision=boardRevision,m=mode,snapshot=[...board]", self.script)
+
     @unittest.skipUnless(shutil.which("node"), "Node.js unavailable")
     def test_javascript_syntax(self):
         proc = subprocess.run(["node", "--check", "--input-type=commonjs"],
