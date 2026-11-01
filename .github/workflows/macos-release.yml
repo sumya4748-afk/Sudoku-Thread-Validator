@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - 'sudoku_validator.c'
+      - 'README.md'
       - 'server.py'
       - 'dashboard.html'
       - 'mac_app_launcher.py'
