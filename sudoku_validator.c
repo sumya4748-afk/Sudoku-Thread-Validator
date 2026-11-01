@@ -499,8 +499,9 @@ int main(int argc, char *argv[]) {
         case 'e': if (parse_num("e", optarg, 0, N * N, &num)) return 2; errors = (int)num; break;
         case 's': {
             int r, c, v;
-            if (sscanf(optarg, "%d,%d,%d", &r, &c, &v) != 3 || r < 1 || r > 9 || c < 1 || c > 9 ||
-                v < 0 || v > 9) {
+            char tail;
+            if (sscanf(optarg, "%d,%d,%d%c", &r, &c, &v, &tail) != 3 ||
+                r < 1 || r > 9 || c < 1 || c > 9 || v < 0 || v > 9) {
                 fprintf(stderr, "-s буруу: '%s' (жишээ: -s 3,5,7)\n", optarg);
                 return 2;
             }
