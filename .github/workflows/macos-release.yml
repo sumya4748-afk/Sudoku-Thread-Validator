@@ -6,6 +6,8 @@ on:
     paths:
       - 'sudoku_validator.c'
       - 'README.md'
+      - 'tests/**'
+      - 'ui/**'
       - 'server.py'
       - 'dashboard.html'
       - 'mac_app_launcher.py'
@@ -27,7 +29,7 @@ jobs:
       - name: Package macOS application
         run: |
           python3 -m pip install pyinstaller
-          python3 -m PyInstaller --noconfirm --clean --windowed --onedir --name SudokuValidation --add-data 'dashboard.html:.' --add-binary 'sudoku_validator:.' --hidden-import server mac_app_launcher.py
+          python3 -m PyInstaller --noconfirm --clean --windowed --onedir --name SudokuValidation --add-data 'dashboard.html:.' --add-data 'ui:ui' --add-binary 'sudoku_validator:.' --hidden-import server mac_app_launcher.py
           test -d dist/SudokuValidation.app
           test -x dist/SudokuValidation.app/Contents/MacOS/SudokuValidation
       - name: Test packaged app engine and server bridge
@@ -50,6 +52,8 @@ jobs:
                       time.sleep(0.5)
               else:
                   raise RuntimeError("Bundled dashboard did not start")
+              with urllib.request.urlopen("http://127.0.0.1:8765/ui/sudoku_threads.html", timeout=3) as r:
+                  assert r.status == 200
               import json
               board = [int(c) for c in "534678912672195348198342567859761423426853791713924856961537284287419635345286179"]
               for mode in (1, 11, 27):

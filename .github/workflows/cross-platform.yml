@@ -6,6 +6,11 @@ on:
     paths:
       - 'sudoku_validator.c'
       - 'README.md'
+      - 'run_tests.sh'
+      - 'launch.py'
+      - 'START_LINUX.sh'
+      - 'START_MAC.command'
+      - 'run_linux.sh'
       - 'Makefile'
       - 'server.py'
       - 'dashboard.html'
@@ -13,6 +18,7 @@ on:
       - '.github/workflows/cross-platform.yml'
   pull_request:
     paths:
+      - 'run_tests.sh'
       - 'sudoku_validator.c'
       - 'Makefile'
       - 'server.py'
@@ -71,8 +77,21 @@ jobs:
               print(f'{mode} worker(s): valid and invalid cases passed')
           PY
 
+      - name: Run native regression suite (without sanitizers)
+        run: bash run_tests.sh
+
       - name: Check native executable CLI
         run: |
           ./sudoku_validator -t 11
           ./sudoku_validator -t 27
           ./sudoku_validator -t 1
+
+  sanitizer:
+    name: Ubuntu sanitizer regression
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and run required sanitizers
+        run: |
+          make clean
+          make test
