@@ -6,6 +6,11 @@ on:
     paths:
       - 'sudoku_validator.c'
       - 'README.md'
+      - 'run_tests.sh'
+      - 'launch.py'
+      - 'START_LINUX.sh'
+      - 'START_MAC.command'
+      - 'run_linux.sh'
       - 'Makefile'
       - 'server.py'
       - 'dashboard.html'
@@ -70,6 +75,9 @@ jobs:
               assert invalid['badCells'], (mode, invalid)
               print(f'{mode} worker(s): valid and invalid cases passed')
           PY
+
+      - name: Run full native regression suite
+        run: bash run_tests.sh
 
       - name: Check native executable CLI
         run: |
