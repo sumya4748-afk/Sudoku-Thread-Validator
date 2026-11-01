@@ -17,6 +17,8 @@ on:
       - 'tests/**'
       - 'docs/USER_GUIDE.md'
       - '.github/workflows/windows-release.yml'
+permissions:
+  contents: write
 jobs:
   windows:
     runs-on: windows-latest
@@ -73,3 +75,17 @@ jobs:
         with:
           name: SudokuValidation_Windows_Ready
           path: SudokuValidation_Windows_Ready.zip
+      - name: Publish easy-download Windows ZIP
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "windows-latest"
+          gh release view $tag --repo ${{ github.repository }} 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --repo ${{ github.repository }} --target "${{ github.sha }}" --title "Windows - Ready to Run" --notes "Download the Windows ZIP, Extract All, then run SudokuValidation.exe. No GCC or Python installation required." --latest=false
+            if ($LASTEXITCODE -ne 0) { throw "Failed to create Windows release" }
+          }
+          gh release upload $tag SudokuValidation_Windows_Ready.zip --repo ${{ github.repository }} --clobber
+          if ($LASTEXITCODE -ne 0) { throw "Failed to upload Windows ZIP" }
