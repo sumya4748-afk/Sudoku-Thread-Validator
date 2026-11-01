@@ -1,0 +1,14 @@
+# Generated native executables
+/sudoku_validator
+/sudoku_validator.exe
+/sudoku_validator_tsan
+/sudoku_validator_asan
+# Python and packaging
+__pycache__/
+*.py[cod]
+/dist/
+/build/
+*.spec
+# Local files
+.DS_Store
+*.log
