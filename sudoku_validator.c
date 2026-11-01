@@ -300,7 +300,7 @@ static int load_grid(const char *path) {
         if (second == 0xBB && third == 0xBF) {
             ch = fgetc(f);
         } else {
-            fprintf(stderr, "Оролтын алдаа: UTF-8 BOM буруу байна\\n");
+            fprintf(stderr, "Оролтын алдаа: UTF-8 BOM буруу байна\n");
             rc = -1;
             ch = EOF;
         }
@@ -308,10 +308,10 @@ static int load_grid(const char *path) {
     while (rc == 0 && ch != EOF) {
         if (ch == '\n') {
             if (check_line_shape(line, cells) != 0) { rc = -1; break; }
-            line++; in_comment = 0; cells = 0; { ch = fgetc(f); continue; }
+            line++; in_comment = 0; cells = 0; ch = fgetc(f); continue;
         }
         if (in_comment) { ch = fgetc(f); continue; }
-        if (ch == '#') { in_comment = 1; { ch = fgetc(f); continue; } }
+        if (ch == '#') { in_comment = 1; ch = fgetc(f); continue; }
         if (ch == ' ' || ch == '\t' || ch == '\r' || ch == ',' || ch == '|' ||
             ch == '-' || ch == '+' || ch == ';')
             { ch = fgetc(f); continue; }
