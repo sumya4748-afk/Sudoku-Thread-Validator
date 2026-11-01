@@ -4,10 +4,12 @@
 9×9 Sudoku-ийн **бүрэн бөглөсөн шийд** зөв эсэхийг C11/Pthreads хөдөлгүүрээр шалгана. 1, 11, 27 урсгалын горимыг сонгож, урсгал тус бүрийн үр дүн болон хугацааг харьцуулна. Энэ нь Sudoku-г автоматаар боддог програм биш.
 
 ## Windows дээр ажиллуулах
-1. GitHub Actions-ийн хамгийн сүүлийн **ногоон ✓** Windows build-ийн `SudokuValidation_Windows_Ready` artifact-ийг татна.
+1. [Windows-ийн бэлэн ZIP-ийг шууд татна](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/download/windows-latest/SudokuValidation_Windows_Ready.zip) (эсвэл [Releases хуудас](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/windows-latest)-наас `SudokuValidation_Windows_Ready.zip` сонгоно).
 2. ZIP-ийг **Extract All** хийнэ.
 3. Задалсан хавтасны `SudokuValidation.exe`-г нээнэ. Python, GCC суулгах шаардлагагүй.
 4. Хөтөч `http://127.0.0.1:8765/dashboard.html` хаягаар нээгдэнэ. Програмын серверийн цонхыг ажиллаж байх хугацаанд бүү хаа.
+
+**Эх кодоос ажиллуулах өөр арга:** `START_WINDOWS.bat` нь Python болон GCC compiler шаарддаг. Энэ нь багш, хөгжүүлэгчид эх кодыг шалгахад зориулагдсан; энгийн хэрэглэгчид бэлэн EXE-г ашиглана. ZIP дотроос `dashboard.html`-ийг шууд нээвэл `Failed to fetch` алдаа гарна. Windows SmartScreen анхааруулга гарвал зөвхөн эх сурвалжийг нь шалгасан программд зөвшөөрөл өгнө.
 
 ## macOS дээр хоёр дараад ажиллуулах (Apple Silicon)
 1. GitHub Actions-ийн **Build macOS Sudoku app** workflow-ийн хамгийн сүүлийн ногоон ✓ run-ээс `SudokuValidation_Mac_Ready` artifact татна.
