@@ -23,7 +23,7 @@ def check(payload):
     if type(mode) is not int or mode not in (1, 11, 27):
         raise ValueError('Горим 1, 11, эсвэл 27 байх ёстой.')
     if not BINARY.is_file():
-        raise FileNotFoundError('C engine not built. Run make (macOS/Linux) or build_windows.bat (Windows).')
+        raise FileNotFoundError('C хөдөлгүүр хөрвүүлэгдээгүй байна. macOS/Linux дээр make, Windows дээр build_windows.bat ажиллуулна уу.')
     grid_text = '\n'.join(''.join(str(x) for x in board[r*9:(r+1)*9]) for r in range(9)) + '\n'
     run = subprocess.run([str(BINARY), '-f', '-', '-t', str(mode)], input=grid_text,
                          encoding='utf-8', errors='replace', capture_output=True,
@@ -138,17 +138,20 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_error(404)
             return
         if self.headers.get('Content-Type', '').split(';')[0].strip().lower() != 'application/json':
-            self._json(415, {'error': 'Content-Type must be application/json'})
+            self._json(415, {'error': 'Content-Type нь application/json байх ёстой.'})
             return
         if not MAX_ACTIVE.acquire(blocking=False):
-            self._json(503, {'error': 'Too many concurrent validations'})
+            self._json(503, {'error': 'Хэт олон шалгалт зэрэг ажиллаж байна. Түр хүлээгээд дахин оролдоно уу.'})
             return
         try:
             try:
                 length = int(self.headers.get('Content-Length', '0'))
                 if length < 1 or length > 8192:
                     raise ValueError('Хүсэлтийн хэмжээ буруу.')
-                data = json.loads(self.rfile.read(length))
+                try:
+                    data = json.loads(self.rfile.read(length))
+                except json.JSONDecodeError as exc:
+                    raise ValueError('Хүсэлтийн JSON формат буруу байна.') from exc
                 result, status = check(data), 200
             except (ValueError, json.JSONDecodeError) as exc:
                 result, status = {'error': str(exc)}, 400
@@ -167,3 +170,6 @@ if __name__ == '__main__':
         ThreadingHTTPServer((host, port), Handler).serve_forever()
     except KeyboardInterrupt:
         print('\nСервер зогслоо.')
+    except OSError as exc:
+        print(f'Серверийг эхлүүлж чадсангүй: 127.0.0.1:{port} порт завгүй эсвэл ашиглах боломжгүй ({exc}).', file=sys.stderr)
+        sys.exit(2)

@@ -58,6 +58,9 @@ jobs:
       - name: Check dashboard JavaScript and UI
         run: python3 -m unittest discover -s tests -p test_dashboard_ui.py -v
 
+      - name: Run Python bridge and regression tests
+        run: python3 -m unittest discover -s tests -v
+
       - name: Check real C engine via Python bridge in all modes
         run: |
           python3 - <<'PY'
