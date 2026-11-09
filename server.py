@@ -39,28 +39,35 @@ def check(payload):
     if len(flags) != mode:
         raise RuntimeError('Worker-ийн үр дүнгийн тоо зөрлөө.')
     elapsed = TIME.search(output)
-    # Cell-level errors are derived separately for UI highlighting; the verdict is from C.
+    # Diagnostics mirror the C check_region/mark_bad_cells semantics.
+    # C remains the authority for the verdict and per-worker status.
     bad = set()
-    for kind in ('row', 'col', 'box'):
+    issues = []
+    for kind, title in (('row', 'Мөр'), ('col', 'Багана'), ('box', '3×3 хэсэг')):
         for region in range(9):
             coords = ([(region, c) for c in range(9)] if kind == 'row' else
                       [(r, region) for r in range(9)] if kind == 'col' else
                       [(region//3*3+r, region%3*3+c) for r in range(3) for c in range(3)])
-            values = {}
+            seen = {}
             for r, c in coords:
                 v = board[r*9+c]
                 if v == 0:
                     bad.add(r*9+c)
-                elif v in values:
-                    bad.add(r*9+c)
-                    bad.add(values[v])
+                    issues.append(f'{title} {region+1}: нүд [{r+1},{c+1}] хоосон')
+                elif v in seen:
+                    # The C code highlights *all* occurrences of a duplicated digit.
+                    bad.update(rr*9+cc for rr, cc in coords if board[rr*9+cc] == v)
+                    issues.append(f'{title} {region+1}: {v} давхардсан (нүд [{r+1},{c+1}])')
                 else:
-                    values[v] = r*9+c
+                    seen[v] = (r, c)
+            for digit in range(1, 10):
+                if digit not in seen:
+                    issues.append(f'{title} {region+1}: {digit} цифр дутуу')
     labels = (['Бүх 27 бүс'] if mode == 1 else
               ['Бүх мөр', 'Бүх багана'] + [f'3×3 хэсэг {i+1}' for i in range(9)] if mode == 11 else
               [f'Мөр {i+1}' for i in range(9)] + [f'Багана {i+1}' for i in range(9)] + [f'3×3 хэсэг {i+1}' for i in range(9)])
     return {'valid': run.returncode == 0, 'mode': mode, 'workers': [{'label': name, 'ok': bool(ok)} for name, ok in zip(labels, flags)],
-            'badCells': sorted(bad), 'microseconds': float(elapsed.group(1)) if elapsed else None,
+            'badCells': sorted(bad), 'issues': issues, 'microseconds': float(elapsed.group(1)) if elapsed else None,
             'engine': 'C11 + POSIX pthreads', 'note': 'Хугацаа нь бодит C thread-ийн хэмжилт; сургалтын симуляцын tick биш.'}
 
 class Handler(SimpleHTTPRequestHandler):
