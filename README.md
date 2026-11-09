@@ -135,16 +135,17 @@ Windows, macOS, Linux-ийн CI шалгалтыг [GitHub Actions](https://gith
 
 **Repository бүтэц:** `src/sudoku_validator.c` нь root дахь `sudoku_validator.c`-ийн ижил агуулгатай хуулбар. Одоогийн build, CI, Windows/macOS багцууд root дахь файлыг ашигласан хэвээр тул ажиллаж буй замуудыг өөрчлөөгүй. Код өөрчлөхдөө хоёр файлыг ижил байлгах шаардлагатай; бүрэн шилжүүлэлт хийгдээгүй.
 
-**Баримт бичгийн хувилбарын анхааруулга:** `docs/Report.pdf` болон `docs/Manual.pdf` нь хуучин ноорог бөгөөд 2026-11-01-ний `main` кодын бүрэн тайлан биш. Эцсийн 33 хуудас тайлан, 8 хуудас гарын авлагыг Teams-д илгээсэн; тэдгээрийг репод байршуулж, хувилбарын дугаартай Release-д хавсаргах ажил үлдсэн. `docs/REPORT_AI_UI_NOTES.md` нь зөвхөн нэмэлт тэмдэглэл.
+**Баримт бичиг:** [Төслийн тайлан](docs/Report.pdf) (`docs/Report.pdf`, 1,665,674 байт) репод байна. [Хэрэглэгчийн бүрэн заавар](docs/USER_GUIDE.md) нь GitHub дээр шууд уншигдана. Тусдаа `docs/Manual.pdf` одоогоор байхгүй; 8 хуудас PDF Manual-г эх файлынх нь хамт оруулах шаардлагатай. `docs/REPORT_AI_UI_NOTES.md` нь нэмэлт тэмдэглэл.
 
+## Хувилбар ба баталгаажуулалт
 
-## Хувилбар, туршилтын тайлбар (харилцан шүүмжийн дараа)
+- **Хуучин хувилбар:** `v1.0.0` нь CLI оролтын болон benchmark exit-code-ийн засвараас өмнөх код тул эцсийн хувилбар биш.
+- **Нийтэлсэн тогтмол хувилбар:** [`v1.1.0`](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/v1.1.0) нь `106cca9` commit дээр үүссэн бөгөөд Windows `SudokuValidation.zip` asset-тай. Энэ tag нь дараагийн `main` засваруудыг **агуулахгүй**.
+- **Хамгийн сүүлийн код:** `main` branch болон [GitHub Actions](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/actions)-ийн тухайн commit дээрх шалгалтыг харна. Build artifact, Release binary болон source commit-ийг ижил гэж таамаглахгүй.
+- **UI оношилгоо:** C/Pthreads нь зөв/буруу болон worker `valid[]` үр дүнг тогтооно. Python `server.py` нь `badCells` болон `issues`-ийг тооцоолж JSON-д буцаана. Dashboard серверийн `issues`-ийг харуулдаг; C-ийн дотоод `worker_report.issues` шууд JSON болоогүй.
+- **Sanitizer:** Linux-ийн зарим kernel дээр TSan `unexpected memory mapping` алдаатай байж болно. Үүнийг PASS гэж тооцохгүй; үндсэн тест, ASan/UBSan болон TSan-ийг тусад нь шалгана.
+- **Гар ажиллагааны тест:** CI-ийн амжилт нь Windows/macOS GUI-г бодит төхөөрөмж дээр ажиллуулсныг орлохгүй.
 
-- **Үнэлэх код:** `main` салбарын тухайн үеийн commit SHA-г тэмдэглэнэ. `v1.0.0` нь хуучин хувилбар: `main`-д дараа нь зассан CLI оролт болон benchmark-ийн гаралтын кодын алдаатай. Иймээс `v1.0.0`-ийг эцсийн код гэж үзэхгүй.
-- **Windows ZIP:** `windows-latest` нь өөрчлөгдөж болох Release; түүний binary-г тухайн `main` commit-той тааруулж баталгаажуулахгүйгээр `v1.0.0`-ийн binary гэж үзэхгүй. Тогтмол tag бүхий шинэ Release бэлтгэх шаардлагатай.
-- **Тест:** `make test`-ийн үр дүнг ашигласан OS, compiler, commit болон sanitizer-ийн нөхцөлтэй хамт тэмдэглэнэ. Зарим шинэ Linux/WSL2 kernel дээр ThreadSanitizer `FATAL: ThreadSanitizer: unexpected memory mapping` гэж ажиллахгүй байж болно. Энэ нь дангаараа Sudoku алгоритмын алдаа гэсэн үг биш. TSan хэсэг унавал бусад тестийг тусад нь ажиллуулж, TSan-ийн алдааг нуухгүйгээр тайлагнана.
-- **UI-ийн үр дүн:** C/Pthreads нь Sudoku зөв эсэх болон worker-ийн `valid[]` үр дүнг тогтооно. Харин `server.py` нь UI-д тодруулах `badCells`-ийг, `dashboard.html` нь алдааны тайлбарыг тусад нь тооцдог. Эдгээр нь C-ийн `worker_report.issues`-ийг шууд дамжуулдаггүй; цаашид нэг эх сурвалжтай болгох боломжтой.
-- **Тайлан:** Teams-д илгээсэн эцсийн PDF-үүдийг репод хуулж байж баримт бичгийн хувилбарын зөрүү арилна. Энэ README засвар нь PDF-ийг автоматаар шинэчлэхгүй.
 
 ## Харилцан шүүмжийн дараах нэмэлт шалгалт
 
