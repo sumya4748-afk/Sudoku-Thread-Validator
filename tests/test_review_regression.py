@@ -32,6 +32,7 @@ class ReviewRegression(unittest.TestCase):
                     self.assertEqual(bool(result['badCells']), not expected)
                     self.assertEqual(bool(result['issues']), not expected)
                     self.assertEqual(all(w['ok'] for w in result['workers']), expected)
+                    self.assertEqual(result['valid'], all(w['ok'] for w in result['workers']))
 
     def test_subprocess_error_does_not_look_like_invalid_sudoku(self):
         with patch.object(server, 'BINARY') as binary, patch.object(
