@@ -34,16 +34,18 @@ class ReviewRegression(unittest.TestCase):
                     self.assertEqual(all(w['ok'] for w in result['workers']), expected)
 
     def test_subprocess_error_does_not_look_like_invalid_sudoku(self):
-        with patch.object(server.BINARY, 'is_file', return_value=True), patch.object(
+        with patch.object(server, 'BINARY') as binary, patch.object(
             server.subprocess, 'run', return_value=SimpleNamespace(
                 returncode=2, stdout='', stderr='invalid input')):
+            binary.is_file.return_value = True
             with self.assertRaisesRegex(RuntimeError, 'invalid input'):
                 server.check({'board': GOOD, 'mode': 11})
 
     def test_worker_count_mismatch_is_rejected(self):
-        with patch.object(server.BINARY, 'is_file', return_value=True), patch.object(
+        with patch.object(server, 'BINARY') as binary, patch.object(
             server.subprocess, 'run', return_value=SimpleNamespace(
                 returncode=0, stdout='valid[] = [1 1]\\nХугацаа: 1.0 мкс', stderr='')):
+            binary.is_file.return_value = True
             with self.assertRaisesRegex(RuntimeError, 'тоо зөрлөө'):
                 server.check({'board': GOOD, 'mode': 11})
 
