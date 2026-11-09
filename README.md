@@ -91,7 +91,7 @@ ready queue-ийн дараалал зэрэг параметрээр thread-и�
 
 ### Windows — бэлэн EXE
 
-**Энгийн Windows хэрэглэгчдэд санал болгох арга:** [Windows ZIP-ийг шууд татах](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/download/windows-latest/SudokuValidation_Windows_Ready.zip) (эсвэл [Releases хуудас](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/windows-latest)). `SudokuValidation_Windows_Ready.zip`-ийг татаж, **Extract All** хийж бүрэн задлаад, доторх `SudokuValidation.exe`-г ажиллуулна. ZIP дотроос нь шууд HTML нээхгүй. Python болон GCC суулгах шаардлагагүй. Windows SmartScreen анхааруулга өгч болзошгүй; зөвхөн итгэлтэй эх сурвалжаас татсан файлыг ажиллуулна.
+**Windows-д ашиглах нэг арга (хөдөлгөөнт `windows-latest` багц; тогтмол хувилбар биш):** [Windows ZIP-ийг шууд татах](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/download/windows-latest/SudokuValidation_Windows_Ready.zip) (эсвэл [Releases хуудас](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/windows-latest)). `SudokuValidation_Windows_Ready.zip`-ийг татаж, **Extract All** хийж бүрэн задлаад, доторх `SudokuValidation.exe`-г ажиллуулна. ZIP дотроос нь шууд HTML нээхгүй. Python болон GCC суулгах шаардлагагүй. Windows SmartScreen анхааруулга өгч болзошгүй; зөвхөн итгэлтэй эх сурвалжаас татсан файлыг ажиллуулна.
 
 **Эх кодоос ажиллуулах хуучин арга:** `START_WINDOWS.bat` нь GitHub-ийн **Code → Download ZIP**-ээр авсан эх кодын багцад хэвээр байна. Энэ арга нь Python болон C compiler (GCC) шаарддаг тул хөгжүүлэгч, багш, эх кодыг шалгах хүмүүст зориулагдсан. Энгийн хэрэглэгчид `.bat` ажиллуулах шаардлагагүй. `windows-release.yml` нь Windows EXE-г автоматаар build хийж шалгаад, `windows-latest` Release-д ZIP-г нийтэлдэг тохиргоо; хэрэглэгчид энэ YAML файлыг татахгүй.
 
@@ -135,4 +135,13 @@ Windows, macOS, Linux-ийн CI шалгалтыг [GitHub Actions](https://gith
 
 **Repository бүтэц:** `src/sudoku_validator.c` нь root дахь `sudoku_validator.c`-ийн ижил агуулгатай хуулбар. Одоогийн build, CI, Windows/macOS багцууд root дахь файлыг ашигласан хэвээр тул ажиллаж буй замуудыг өөрчлөөгүй. Код өөрчлөхдөө хоёр файлыг ижил байлгах шаардлагатай; бүрэн шилжүүлэлт хийгдээгүй.
 
-**Тайлангийн тэмдэглэл:** [AI ашиглалт ба бодит UI/симуляцын ялгаа](docs/REPORT_AI_UI_NOTES.md) — энэ тайлбарыг үндсэн `docs/Report.pdf`-д нэгтгэх шаардлагатай.
+**Баримт бичгийн хувилбарын анхааруулга:** `docs/Report.pdf` болон `docs/Manual.pdf` нь хуучин ноорог бөгөөд 2026-11-01-ний `main` кодын бүрэн тайлан биш. Эцсийн 33 хуудас тайлан, 8 хуудас гарын авлагыг Teams-д илгээсэн; тэдгээрийг репод байршуулж, хувилбарын дугаартай Release-д хавсаргах ажил үлдсэн. `docs/REPORT_AI_UI_NOTES.md` нь зөвхөн нэмэлт тэмдэглэл.
+
+
+## Хувилбар, туршилтын тайлбар (харилцан шүүмжийн дараа)
+
+- **Үнэлэх код:** `main` салбарын тухайн үеийн commit SHA-г тэмдэглэнэ. `v1.0.0` нь хуучин хувилбар: `main`-д дараа нь зассан CLI оролт болон benchmark-ийн гаралтын кодын алдаатай. Иймээс `v1.0.0`-ийг эцсийн код гэж үзэхгүй.
+- **Windows ZIP:** `windows-latest` нь өөрчлөгдөж болох Release; түүний binary-г тухайн `main` commit-той тааруулж баталгаажуулахгүйгээр `v1.0.0`-ийн binary гэж үзэхгүй. Тогтмол tag бүхий шинэ Release бэлтгэх шаардлагатай.
+- **Тест:** `make test`-ийн үр дүнг ашигласан OS, compiler, commit болон sanitizer-ийн нөхцөлтэй хамт тэмдэглэнэ. Зарим шинэ Linux/WSL2 kernel дээр ThreadSanitizer `FATAL: ThreadSanitizer: unexpected memory mapping` гэж ажиллахгүй байж болно. Энэ нь дангаараа Sudoku алгоритмын алдаа гэсэн үг биш. TSan хэсэг унавал бусад тестийг тусад нь ажиллуулж, TSan-ийн алдааг нуухгүйгээр тайлагнана.
+- **UI-ийн үр дүн:** C/Pthreads нь Sudoku зөв эсэх болон worker-ийн `valid[]` үр дүнг тогтооно. Харин `server.py` нь UI-д тодруулах `badCells`-ийг, `dashboard.html` нь алдааны тайлбарыг тусад нь тооцдог. Эдгээр нь C-ийн `worker_report.issues`-ийг шууд дамжуулдаггүй; цаашид нэг эх сурвалжтай болгох боломжтой.
+- **Тайлан:** Teams-д илгээсэн эцсийн PDF-үүдийг репод хуулж байж баримт бичгийн хувилбарын зөрүү арилна. Энэ README засвар нь PDF-ийг автоматаар шинэчлэхгүй.
