@@ -3,7 +3,6 @@ import os
 import sys
 import threading
 import webbrowser
-from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 BASE = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
@@ -14,7 +13,7 @@ server.BINARY = BASE / "sudoku_validator"
 
 def main():
     try:
-        httpd = ThreadingHTTPServer(("127.0.0.1", 8765), server.Handler)
+        httpd = server.LocalHTTPServer(("127.0.0.1", 8765), server.Handler)
     except OSError as exc:
         # A busy port does not prove that the other service is this Sudoku app.
         print(f"Cannot start Sudoku: port 8765 is unavailable ({exc}).", flush=True)

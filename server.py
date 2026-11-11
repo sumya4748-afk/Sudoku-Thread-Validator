@@ -2,17 +2,29 @@
 """Local-only bridge between an editable browser board and the actual C/Pthreads binary."""
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
-import json, re, subprocess, sys, threading
+import argparse
+import json
+import subprocess
+import sys
+import threading
 from urllib.parse import urlsplit
-from http import HTTPStatus
 
 MAX_ACTIVE = threading.BoundedSemaphore(4)
 PUBLIC_FILES = {'/dashboard.html': 'dashboard.html', '/ui/sudoku_threads.html': 'ui/sudoku_threads.html'}
 
 ROOT = Path(__file__).resolve().parent
 BINARY = ROOT / ('sudoku_validator.exe' if sys.platform == 'win32' else 'sudoku_validator')
-VALID = re.compile(r'valid\[\] = \[([01 ]+)\]')
-TIME = re.compile(r'Хугацаа: ([\d.]+) мкс')
+def describe_issue(issue):
+    title = {'row': 'Мөр', 'col': 'Багана', 'box': '3×3 хэсэг'}[issue['region']]
+    region = f"{title} {issue['number']}"
+    cell = f"[{issue['row']},{issue['column']}]"
+    digit = issue['digit']
+    if issue['kind'] == 'duplicate':
+        return f'{region}: {digit} давхардсан (нүд {cell})'
+    if issue['kind'] == 'range':
+        return f'{region}: нүд {cell} хоосон'
+    return f'{region}: {digit} цифр дутуу'
+
 
 def check(payload):
     if not isinstance(payload, dict):
@@ -25,49 +37,30 @@ def check(payload):
     if not BINARY.is_file():
         raise FileNotFoundError('C хөдөлгүүр хөрвүүлэгдээгүй байна. macOS/Linux дээр make, Windows дээр build_windows.bat ажиллуулна уу.')
     grid_text = '\n'.join(''.join(str(x) for x in board[r*9:(r+1)*9]) for r in range(9)) + '\n'
-    run = subprocess.run([str(BINARY), '-f', '-', '-t', str(mode)], input=grid_text,
+    run = subprocess.run([str(BINARY), '-j', '-f', '-', '-t', str(mode)], input=grid_text,
                          encoding='utf-8', errors='replace', capture_output=True,
                          timeout=8, cwd=ROOT)
     output = run.stdout or ''
     error_output = run.stderr or ''
     if run.returncode not in (0, 1):
         raise RuntimeError(error_output.strip() or output.strip() or f'C engine exited with code {run.returncode}')
-    match = VALID.search(output)
-    if not match:
-        raise RuntimeError('C engine produced no valid[] output. ' + (error_output.strip() or output[-400:] or 'No output received.'))
-    flags = [int(v) for v in match.group(1).split()]
-    if len(flags) != mode:
-        raise RuntimeError('Worker-ийн үр дүнгийн тоо зөрлөө.')
-    elapsed = TIME.search(output)
-    # Diagnostics mirror the C check_region/mark_bad_cells semantics.
-    # C remains the authority for the verdict and per-worker status.
-    bad = set()
-    issues = []
-    for kind, title in (('row', 'Мөр'), ('col', 'Багана'), ('box', '3×3 хэсэг')):
-        for region in range(9):
-            coords = ([(region, c) for c in range(9)] if kind == 'row' else
-                      [(r, region) for r in range(9)] if kind == 'col' else
-                      [(region//3*3+r, region%3*3+c) for r in range(3) for c in range(3)])
-            seen = {}
-            for r, c in coords:
-                v = board[r*9+c]
-                if v == 0:
-                    bad.add(r*9+c)
-                    issues.append(f'{title} {region+1}: нүд [{r+1},{c+1}] хоосон')
-                elif v in seen:
-                    # The C code highlights *all* occurrences of a duplicated digit.
-                    bad.update(rr*9+cc for rr, cc in coords if board[rr*9+cc] == v)
-                    issues.append(f'{title} {region+1}: {v} давхардсан (нүд [{r+1},{c+1}])')
-                else:
-                    seen[v] = (r, c)
-            for digit in range(1, 10):
-                if digit not in seen:
-                    issues.append(f'{title} {region+1}: {digit} цифр дутуу')
+    try:
+        report = json.loads(output)
+        flags = report['flags']
+        bad_cells = report['badCells']
+        issues = [describe_issue(issue) for issue in report['issues']]
+        elapsed = report['microseconds']
+    except (ValueError, TypeError, KeyError) as exc:
+        raise RuntimeError('C хөдөлгүүрийн JSON үр дүнг уншиж чадсангүй.') from exc
+    if not isinstance(flags, list) or len(flags) != mode:
+        raise RuntimeError('Урсгалын үр дүнгийн тоо зөрлөө.')
+    if all(flags) != (run.returncode == 0):
+        raise RuntimeError('C хөдөлгүүрийн эцсийн дүн ба урсгалуудын үр дүн зөрлөө.')
     labels = (['Бүх 27 бүс'] if mode == 1 else
               ['Бүх мөр', 'Бүх багана'] + [f'3×3 хэсэг {i+1}' for i in range(9)] if mode == 11 else
               [f'Мөр {i+1}' for i in range(9)] + [f'Багана {i+1}' for i in range(9)] + [f'3×3 хэсэг {i+1}' for i in range(9)])
     return {'valid': run.returncode == 0, 'mode': mode, 'workers': [{'label': name, 'ok': bool(ok)} for name, ok in zip(labels, flags)],
-            'badCells': sorted(bad), 'issues': issues, 'microseconds': float(elapsed.group(1)) if elapsed else None,
+            'badCells': bad_cells, 'issues': issues, 'microseconds': elapsed,
             'engine': 'C11 + POSIX pthreads', 'note': 'Хугацаа нь бодит C thread-ийн хэмжилт; сургалтын симуляцын tick биш.'}
 
 class Handler(SimpleHTTPRequestHandler):
@@ -84,11 +77,15 @@ class Handler(SimpleHTTPRequestHandler):
 
     def _allowed_host(self):
         host = self.headers.get('Host', '').lower()
-        return host in ('127.0.0.1:8765', 'localhost:8765')
+        return host in self._local_hosts()
 
     def _allowed_origin(self):
         origin = self.headers.get('Origin')
-        return not origin or origin.lower() in ('http://127.0.0.1:8765', 'http://localhost:8765')
+        return not origin or origin.lower() in {f'http://{host}' for host in self._local_hosts()}
+
+    def _local_hosts(self):
+        port = self.server.server_port
+        return (f'127.0.0.1:{port}', f'localhost:{port}')
 
     def _route(self):
         return urlsplit(self.path).path
@@ -150,12 +147,14 @@ class Handler(SimpleHTTPRequestHandler):
                     raise ValueError('Хүсэлтийн хэмжээ буруу.')
                 try:
                     data = json.loads(self.rfile.read(length))
-                except json.JSONDecodeError as exc:
+                except (json.JSONDecodeError, UnicodeDecodeError) as exc:
                     raise ValueError('Хүсэлтийн JSON формат буруу байна.') from exc
                 result, status = check(data), 200
-            except (ValueError, json.JSONDecodeError) as exc:
+            except ValueError as exc:
                 result, status = {'error': str(exc)}, 400
-            except (FileNotFoundError, subprocess.TimeoutExpired, RuntimeError) as exc:
+            except subprocess.TimeoutExpired:
+                result, status = {'error': 'C хөдөлгүүр хугацаандаа хариу өгсөнгүй.'}, 503
+            except (FileNotFoundError, RuntimeError) as exc:
                 result, status = {'error': str(exc)}, 503
             except Exception:
                 result, status = {'error': 'Серверийн алдаа.'}, 500
@@ -170,12 +169,18 @@ class LocalHTTPServer(ThreadingHTTPServer):
 
 
 if __name__ == '__main__':
-    host, port = '127.0.0.1', 8765
-    print(f'Бодит Pthreads интерфэйс: http://{host}:{port}/dashboard.html', flush=True)
+    parser = argparse.ArgumentParser(description='Судокугийн локал сервер')
+    parser.add_argument('--port', type=int, default=8765, help='Локал порт (анхдагч: 8765)')
+    port = parser.parse_args().port
+    if not 1 <= port <= 65535:
+        parser.error('--port нь 1–65535 хооронд байна.')
+    host = '127.0.0.1'
     try:
-        LocalHTTPServer((host, port), Handler).serve_forever()
+        with LocalHTTPServer((host, port), Handler) as httpd:
+            print(f'Бодит Pthreads интерфэйс: http://{host}:{port}/dashboard.html', flush=True)
+            httpd.serve_forever()
     except KeyboardInterrupt:
         print('\nСервер зогслоо.')
-    except OSError as exc:
-        print(f'Серверийг эхлүүлж чадсангүй: 127.0.0.1:{port} порт завгүй эсвэл ашиглах боломжгүй ({exc}).', file=sys.stderr)
+    except OSError:
+        print(f'{host}:{port} порт завгүй эсвэл ашиглах боломжгүй байна. --port сонголтоор өөр порт өгнө үү.', file=sys.stderr)
         sys.exit(2)

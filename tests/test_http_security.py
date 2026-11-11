@@ -25,7 +25,7 @@ class HTTPTests(unittest.TestCase):
 
     def request(self, method, path, body=None, headers=None):
         conn = http.client.HTTPConnection('127.0.0.1', self.server.server_port, timeout=4)
-        hdr = {'Host': '127.0.0.1:8765'}
+        hdr = {'Host': f'127.0.0.1:{self.server.server_port}'}
         hdr.update(headers or {})
         conn.request(method, path, body=body, headers=hdr)
         response = conn.getresponse()
@@ -41,11 +41,18 @@ class HTTPTests(unittest.TestCase):
 
     def test_host_and_origin(self):
         self.assertEqual(self.request('GET', '/dashboard.html', headers={'Host': 'evil.test'})[0], 403)
+        status, _ = self.request('GET', '/dashboard.html', headers={'Host': '127.0.0.1:8765'})
+        self.assertEqual(status, 403)
+        status, _ = self.request('POST', '/api/validate', '{}', {
+            'Content-Type': 'application/json',
+            'Origin': f'http://localhost:{self.server.server_port}',
+        })
+        self.assertEqual(status, 400)
         self.assertEqual(self.request('POST', '/api/validate', '{}',
                          {'Content-Type': 'application/json', 'Origin': 'http://evil.test'})[0], 403)
 
     def test_bad_payload_and_content_type(self):
-        for payload in ('[]', 'null', '123', '{}', '{'):
+        for payload in ('[]', 'null', '123', '{}', '{', b'\xff'):
             status, _ = self.request('POST', '/api/validate', payload, {'Content-Type': 'application/json'})
             self.assertEqual(status, 400, payload)
         self.assertEqual(self.request('POST', '/api/validate', '{}',
