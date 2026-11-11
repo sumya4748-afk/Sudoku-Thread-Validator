@@ -31,10 +31,10 @@ def check(payload):
     output = run.stdout or ''
     error_output = run.stderr or ''
     if run.returncode not in (0, 1):
-        raise RuntimeError(error_output.strip() or output.strip() or f'C engine exited with code {run.returncode}')
+        raise RuntimeError(error_output.strip() or output.strip() or f'C хөдөлгүүр {run.returncode} кодтой дууслаа')
     match = VALID.search(output)
     if not match:
-        raise RuntimeError('C engine produced no valid[] output. ' + (error_output.strip() or output[-400:] or 'No output received.'))
+        raise RuntimeError('C хөдөлгүүрээс valid[] үр дүн ирсэнгүй. ' + (error_output.strip() or output[-400:] or 'Гаралт ирээгүй.'))
     flags = [int(v) for v in match.group(1).split()]
     if len(flags) != mode:
         raise RuntimeError('Worker-ийн үр дүнгийн тоо зөрлөө.')
@@ -69,6 +69,12 @@ def check(payload):
     return {'valid': run.returncode == 0, 'mode': mode, 'workers': [{'label': name, 'ok': bool(ok)} for name, ok in zip(labels, flags)],
             'badCells': sorted(bad), 'issues': issues, 'microseconds': float(elapsed.group(1)) if elapsed else None,
             'engine': 'C11 + POSIX pthreads', 'note': 'Хугацаа нь бодит C thread-ийн хэмжилт; сургалтын симуляцын tick биш.'}
+
+class LocalHTTPServer(ThreadingHTTPServer):
+    # Accept a burst of local connections; validation concurrency remains capped.
+    request_queue_size = 128
+    daemon_threads = True
+
 
 class Handler(SimpleHTTPRequestHandler):
     # Explicit UTF-8 for browser HTML pages containing Mongolian text.
@@ -167,7 +173,7 @@ if __name__ == '__main__':
     host, port = '127.0.0.1', 8765
     print(f'Бодит Pthreads интерфэйс: http://{host}:{port}/dashboard.html', flush=True)
     try:
-        ThreadingHTTPServer((host, port), Handler).serve_forever()
+        LocalHTTPServer((host, port), Handler).serve_forever()
     except KeyboardInterrupt:
         print('\nСервер зогслоо.')
     except OSError as exc:
