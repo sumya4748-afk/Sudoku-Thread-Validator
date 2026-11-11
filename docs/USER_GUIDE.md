@@ -3,8 +3,10 @@
 ## Зорилго
 9×9 Sudoku-ийн **бүрэн бөглөсөн шийд** зөв эсэхийг C11/Pthreads хөдөлгүүрээр шалгана. 1, 11, 27 урсгалын горимыг сонгож, урсгал тус бүрийн үр дүн болон хугацааг харьцуулна. Энэ нь Sudoku-г автоматаар боддог програм биш.
 
+Анхдагч серверийн порт 8765. Порт завгүй үед Linux/macOS shell-д `SUDOKU_PORT=8876 python3 server.py`, Windows PowerShell-д `$env:SUDOKU_PORT = '8876'` тохируулаад launcher-аа ажиллуулна. Сервер зөвхөн локал хаягаар сонсоно.
+
 ## Windows дээр ажиллуулах
-1. [Windows-ийн бэлэн ZIP-ийг шууд татна](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/download/v1.2.0/SudokuValidation_Windows_Ready.zip) (эсвэл [Releases хуудас](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/v1.2.0)-наас `SudokuValidation_Windows_Ready.zip` сонгоно).
+1. [Сүүлийн дугаартай release](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/latest)-ээс `SudokuValidation_Windows_Ready.zip` татна.
 2. ZIP-ийг **Extract All** хийнэ.
 3. Задалсан хавтасны `SudokuValidation.exe`-г нээнэ. Python, GCC суулгах шаардлагагүй.
 4. Хөтөч `http://127.0.0.1:8765/dashboard.html` хаягаар нээгдэнэ. Програмын серверийн цонхыг ажиллаж байх хугацаанд бүү хаа.

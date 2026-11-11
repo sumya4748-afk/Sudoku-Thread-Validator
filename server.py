@@ -2,7 +2,7 @@
 """Local-only bridge between an editable browser board and the actual C/Pthreads binary."""
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
-import json, re, subprocess, sys, threading
+import json, os, subprocess, sys, threading
 from urllib.parse import urlsplit
 from http import HTTPStatus
 
@@ -11,8 +11,32 @@ PUBLIC_FILES = {'/dashboard.html': 'dashboard.html', '/ui/sudoku_threads.html': 
 
 ROOT = Path(__file__).resolve().parent
 BINARY = ROOT / ('sudoku_validator.exe' if sys.platform == 'win32' else 'sudoku_validator')
-VALID = re.compile(r'valid\[\] = \[([01 ]+)\]')
-TIME = re.compile(r'Хугацаа: ([\d.]+) мкс')
+HOST = '127.0.0.1'
+DEFAULT_PORT = 8765
+
+
+def configured_port():
+    value = os.environ.get('SUDOKU_PORT', str(DEFAULT_PORT))
+    if not value.isascii() or not value.isdecimal() or len(value) > 5 or not 1 <= int(value) <= 65535:
+        raise ValueError('SUDOKU_PORT нь 1–65535 хоорондох бүхэл тоо байх ёстой.')
+    return int(value)
+
+
+def dashboard_url(port):
+    return f'http://{HOST}:{port}/dashboard.html'
+
+
+def format_issue(item):
+    region, number, kind, digit, row, col = item
+    title = ('Мөр', 'Багана', '3×3 хэсэг')[region]
+    prefix = f'{title} {number + 1}: '
+    cell = f'нүд [{row + 1},{col + 1}]'
+    if kind == 0:
+        return f'{prefix}{digit} давхардсан ({cell})'
+    if kind == 1:
+        return f'{prefix}{cell} хоосон'
+    return f'{prefix}{digit} цифр дутуу'
+
 
 def check(payload):
     if not isinstance(payload, dict):
@@ -25,49 +49,28 @@ def check(payload):
     if not BINARY.is_file():
         raise FileNotFoundError('C хөдөлгүүр хөрвүүлэгдээгүй байна. macOS/Linux дээр make, Windows дээр build_windows.bat ажиллуулна уу.')
     grid_text = '\n'.join(''.join(str(x) for x in board[r*9:(r+1)*9]) for r in range(9)) + '\n'
-    run = subprocess.run([str(BINARY), '-f', '-', '-t', str(mode)], input=grid_text,
+    run = subprocess.run([str(BINARY), '-j', '-f', '-', '-t', str(mode)], input=grid_text,
                          encoding='utf-8', errors='replace', capture_output=True,
                          timeout=8, cwd=ROOT)
-    output = run.stdout or ''
-    error_output = run.stderr or ''
     if run.returncode not in (0, 1):
-        raise RuntimeError(error_output.strip() or output.strip() or f'C engine exited with code {run.returncode}')
-    match = VALID.search(output)
-    if not match:
-        raise RuntimeError('C engine produced no valid[] output. ' + (error_output.strip() or output[-400:] or 'No output received.'))
-    flags = [int(v) for v in match.group(1).split()]
+        raise RuntimeError(f'C хөдөлгүүрийн шалгалт амжилтгүй (код {run.returncode}).')
+    try:
+        result = json.loads(run.stdout)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError('C хөдөлгүүрээс JSON үр дүн уншиж чадсангүй.') from exc
+    flags = result['workers']
     if len(flags) != mode:
-        raise RuntimeError('Worker-ийн үр дүнгийн тоо зөрлөө.')
-    elapsed = TIME.search(output)
-    # Diagnostics mirror the C check_region/mark_bad_cells semantics.
-    # C remains the authority for the verdict and per-worker status.
-    bad = set()
-    issues = []
-    for kind, title in (('row', 'Мөр'), ('col', 'Багана'), ('box', '3×3 хэсэг')):
-        for region in range(9):
-            coords = ([(region, c) for c in range(9)] if kind == 'row' else
-                      [(r, region) for r in range(9)] if kind == 'col' else
-                      [(region//3*3+r, region%3*3+c) for r in range(3) for c in range(3)])
-            seen = {}
-            for r, c in coords:
-                v = board[r*9+c]
-                if v == 0:
-                    bad.add(r*9+c)
-                    issues.append(f'{title} {region+1}: нүд [{r+1},{c+1}] хоосон')
-                elif v in seen:
-                    # The C code highlights *all* occurrences of a duplicated digit.
-                    bad.update(rr*9+cc for rr, cc in coords if board[rr*9+cc] == v)
-                    issues.append(f'{title} {region+1}: {v} давхардсан (нүд [{r+1},{c+1}])')
-                else:
-                    seen[v] = (r, c)
-            for digit in range(1, 10):
-                if digit not in seen:
-                    issues.append(f'{title} {region+1}: {digit} цифр дутуу')
+        raise RuntimeError('Урсгалын үр дүнгийн тоо зөрлөө.')
+    if result['valid'] != (run.returncode == 0) or result['valid'] != all(flags):
+        raise RuntimeError('C хөдөлгүүрийн үр дүн зөрлөө.')
+    # Keep the API display order consistent across all worker configurations.
+    issues = sorted(result['issues'], key=lambda item: (item[0], item[1], item[4] < 0, item[4], item[5], item[3]))
     labels = (['Бүх 27 бүс'] if mode == 1 else
               ['Бүх мөр', 'Бүх багана'] + [f'3×3 хэсэг {i+1}' for i in range(9)] if mode == 11 else
               [f'Мөр {i+1}' for i in range(9)] + [f'Багана {i+1}' for i in range(9)] + [f'3×3 хэсэг {i+1}' for i in range(9)])
     return {'valid': run.returncode == 0, 'mode': mode, 'workers': [{'label': name, 'ok': bool(ok)} for name, ok in zip(labels, flags)],
-            'badCells': sorted(bad), 'issues': issues, 'microseconds': float(elapsed.group(1)) if elapsed else None,
+            'badCells': result['badCells'], 'issues': [format_issue(item) for item in issues],
+            'microseconds': result['microseconds'],
             'engine': 'C11 + POSIX pthreads', 'note': 'Хугацаа нь бодит C thread-ийн хэмжилт; сургалтын симуляцын tick биш.'}
 
 class Handler(SimpleHTTPRequestHandler):
@@ -84,11 +87,11 @@ class Handler(SimpleHTTPRequestHandler):
 
     def _allowed_host(self):
         host = self.headers.get('Host', '').lower()
-        return host in ('127.0.0.1:8765', 'localhost:8765')
+        return host in (f'{HOST}:{self.server.server_port}', f'localhost:{self.server.server_port}')
 
     def _allowed_origin(self):
         origin = self.headers.get('Origin')
-        return not origin or origin.lower() in ('http://127.0.0.1:8765', 'http://localhost:8765')
+        return not origin or origin.lower() in (f'http://{HOST}:{self.server.server_port}', f'http://localhost:{self.server.server_port}')
 
     def _route(self):
         return urlsplit(self.path).path
@@ -132,10 +135,10 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         if not self._allowed_host() or not self._allowed_origin():
-            self.send_error(403)
+            self._json(403, {'error': 'Хүсэлтийн хаяг зөвшөөрөгдөөгүй.'})
             return
         if self._route() != '/api/validate':
-            self.send_error(404)
+            self._json(404, {'error': 'Хүсэлтийн зам олдсонгүй.'})
             return
         if self.headers.get('Content-Type', '').split(';')[0].strip().lower() != 'application/json':
             self._json(415, {'error': 'Content-Type нь application/json байх ёстой.'})
@@ -145,17 +148,20 @@ class Handler(SimpleHTTPRequestHandler):
             return
         try:
             try:
-                length = int(self.headers.get('Content-Length', '0'))
-                if length < 1 or length > 8192:
+                size = self.headers.get('Content-Length', '')
+                if not size.isascii() or not size.isdecimal() or len(size) > 4 or not 1 <= int(size) <= 8192:
                     raise ValueError('Хүсэлтийн хэмжээ буруу.')
+                length = int(size)
                 try:
                     data = json.loads(self.rfile.read(length))
-                except json.JSONDecodeError as exc:
+                except (json.JSONDecodeError, UnicodeDecodeError) as exc:
                     raise ValueError('Хүсэлтийн JSON формат буруу байна.') from exc
                 result, status = check(data), 200
-            except (ValueError, json.JSONDecodeError) as exc:
+            except ValueError as exc:
                 result, status = {'error': str(exc)}, 400
-            except (FileNotFoundError, subprocess.TimeoutExpired, RuntimeError) as exc:
+            except subprocess.TimeoutExpired:
+                result, status = {'error': 'C хөдөлгүүрийн шалгалтын хугацаа хэтэрлээ.'}, 503
+            except (FileNotFoundError, RuntimeError) as exc:
                 result, status = {'error': str(exc)}, 503
             except Exception:
                 result, status = {'error': 'Серверийн алдаа.'}, 500
@@ -170,12 +176,16 @@ class LocalHTTPServer(ThreadingHTTPServer):
 
 
 if __name__ == '__main__':
-    host, port = '127.0.0.1', 8765
-    print(f'Бодит Pthreads интерфэйс: http://{host}:{port}/dashboard.html', flush=True)
     try:
-        LocalHTTPServer((host, port), Handler).serve_forever()
+        port = configured_port()
+        with LocalHTTPServer((HOST, port), Handler) as httpd:
+            print(f'Бодит Pthreads интерфэйс: {dashboard_url(port)}', flush=True)
+            httpd.serve_forever()
     except KeyboardInterrupt:
         print('\nСервер зогслоо.')
-    except OSError as exc:
-        print(f'Серверийг эхлүүлж чадсангүй: 127.0.0.1:{port} порт завгүй эсвэл ашиглах боломжгүй ({exc}).', file=sys.stderr)
+    except ValueError as exc:
+        print(exc, file=sys.stderr)
+        sys.exit(2)
+    except OSError:
+        print(f'Серверийг эхлүүлж чадсангүй: {HOST}:{port} порт завгүй эсвэл ашиглах боломжгүй.', file=sys.stderr)
         sys.exit(2)
