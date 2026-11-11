@@ -1,0 +1,22 @@
+name: Replace v1.2.1 report PDF
+on:
+  push:
+    branches: [maintenance/replace-v1.2.1-report]
+    paths: ['.github/workflows/replace-v121-report.yml']
+permissions:
+  contents: write
+jobs:
+  update-report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Upload the verified report and check the published copy
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          printf '%s  %s\n' 'a9efe562c76fbc12f98445e7ee54c7e4932a04cb1ad1d28adc730cb9a4544ef4' docs/Report.pdf | sha256sum -c -
+          gh release upload v1.2.1 docs/Report.pdf --clobber
+          verified="$(mktemp -d)"
+          gh release download v1.2.1 --pattern Report.pdf --dir "$verified"
+          cmp docs/Report.pdf "$verified/Report.pdf"
