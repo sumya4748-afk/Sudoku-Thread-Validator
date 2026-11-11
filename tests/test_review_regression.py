@@ -28,7 +28,7 @@ class ReviewRegression(unittest.TestCase):
 
     def test_thread_creation_failure_joins_started_workers(self):
         source = (ROOT / 'sudoku_validator.c').read_text(encoding='utf-8')
-        self.assertIn('free(data);\\n            for (int j = 0; j < i; j++)', source)
+        self.assertIn('free(data);\n            for (int j = 0; j < i; j++)', source)
         self.assertIn('int joined = pthread_join(tids[j], NULL);', source)
 
     def test_duplicate_and_empty_are_consistent_across_modes(self):
