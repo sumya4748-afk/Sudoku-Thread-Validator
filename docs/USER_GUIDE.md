@@ -4,7 +4,7 @@
 9×9 Sudoku-ийн **бүрэн бөглөсөн шийд** зөв эсэхийг C11/Pthreads хөдөлгүүрээр шалгана. 1, 11, 27 урсгалын горимыг сонгож, урсгал тус бүрийн үр дүн болон хугацааг харьцуулна. Энэ нь Sudoku-г автоматаар боддог програм биш.
 
 ## Windows дээр ажиллуулах
-1. [Windows-ийн бэлэн ZIP-ийг шууд татна](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/download/v1.2.0/SudokuValidation_Windows_Ready.zip) (эсвэл [Releases хуудас](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/v1.2.0)-наас `SudokuValidation_Windows_Ready.zip` сонгоно).
+1. [Windows-ийн бэлэн ZIP-ийг шууд татна](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/download/v1.2.1/SudokuValidation_Windows_Ready.zip) (эсвэл [Releases хуудас](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/v1.2.1)-наас `SudokuValidation_Windows_Ready.zip` сонгоно).
 2. ZIP-ийг **Extract All** хийнэ.
 3. Задалсан хавтасны `SudokuValidation.exe`-г нээнэ. Python, GCC суулгах шаардлагагүй.
 4. Хөтөч `http://127.0.0.1:8765/dashboard.html` хаягаар нээгдэнэ. Програмын серверийн цонхыг ажиллаж байх хугацаанд бүү хаа.
@@ -60,12 +60,12 @@
 
 ## Хувилбарын нийцэл, мэдэгдэж буй асуудал
 
-**Кодын хувилбар:** `v1.2.0` Release нь `344bc35` commit дээр үүссэн. Энэ хувилбарын Windows ZIP нь Release-д хавсаргасан build #89 artifact-аас гарсан. Түүнээс хойших `main` өөрчлөлтүүд (жишээлбэл benchmark харьцаа, thread үүсгэх алдааны цэвэрлэгээ) `v1.2.0` binary-д автоматаар орохгүй. Шинэ build-ийг ашиглах бол commit SHA болон CI run-ийг тусад нь шалгана. `windows-latest` нь хөдөлгөөнт ZIP учир тогтмол хувилбарын баталгаа биш.
+**Дугаартай хувилбар:** [v1.2.1](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/v1.2.1) Release-д Windows ZIP, тайлан, гарын авлага хавсаргана. Release-ийн tag нь тухайн Windows багцыг бүтээсэн commit-ийг заана.
 
 **Linux/WSL2 дахь ThreadSanitizer:** `make test` үед `FATAL: ThreadSanitizer: unexpected memory mapping` алдаа гарч болно. Энэ нь зарим kernel, санах ойн байршуулалт болон TSan-ийн нийцлийн асуудал байж болох тул үндсэн C тест, Python unittest болон sanitizer-ийн үр дүнг тус тусад нь тэмдэглэнэ. Хэрэв орчин зөвшөөрвөл `setarch "$(uname -m)" -R make test` гэж ASLR-ийг тухайн процессын хэмжээнд унтраан дахин туршиж болно; зөвшөөрөлгүй орчинд ажиллахгүй байж болно. Системийн `sysctl` тохиргоог зөвхөн өөрийн удирддаг туршилтын машин дээр өөрчилнө. Алдаа үргэлжилбэл TSan-ийг PASS гэж тайлагнахгүй.
 
-**Одоогийн эх кодын UI оношилгоо:** C worker-уудын үр дүн, алдаатай нүд (`badCells`) болон бүсийн зөрчил (`issues`) нь `sudoku_validator -j`-ийн JSON гаралтаас ирнэ. Python bridge эдгээрийг Dashboard-д дамжуулж, алдааны тайлбарыг Монголоор хэлбэржүүлнэ. PDF-ийн 2.3 хэсэгт өмнөх хувилбарын Python тооцооллыг тайлбарласан. Эх код шинэчилсэн бол `make` эсвэл `build_windows.bat` ажиллуулж C хөдөлгүүрийг дахин хөрвүүлнэ.
+**Одоогийн эх кодын UI оношилгоо:** C worker-уудын үр дүн, алдаатай нүд (`badCells`) болон бүсийн зөрчил (`issues`) нь `sudoku_validator -j`-ийн JSON гаралтаас ирнэ. Python bridge эдгээрийг Dashboard-д дамжуулж, алдааны тайлбарыг Монголоор хэлбэржүүлнэ. Эх код шинэчилсэн бол `make` эсвэл `build_windows.bat` ажиллуулж C хөдөлгүүрийг дахин хөрвүүлнэ.
 
 **Порт завгүй үед:** `python3 server.py --port 8766` гэж ажиллуулаад `http://127.0.0.1:8766/dashboard.html` хаягийг нээнэ. Бэлэн EXE болон APP нь анхдагч 8765 портыг ашигладаг.
 
-**PDF баримтууд:** `docs/Report.pdf` болон `docs/Manual.pdf`-ийн агуулгыг кодын хамгийн сүүлийн хувилбартай тулгаж баталгаажуулна. Markdown зааврыг шинэчилсэн нь PDF файлын агуулгыг өөрчилдөггүй.
+**PDF баримтууд:** `docs/Manual.pdf` нь v1.2.1-ийн хэрэглээ, CLI benchmark, C оношилгоо болон TSan-ийн зааврыг багтаана. `docs/Report.pdf` нь илгээсэн туршилтын тайлан.

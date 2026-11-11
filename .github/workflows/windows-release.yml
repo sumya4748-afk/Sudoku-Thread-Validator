@@ -15,13 +15,16 @@ on:
       - 'launch_standalone.py'
       - 'dashboard.html'
       - 'tests/**'
-      - 'docs/USER_GUIDE.md'
+      - 'docs/**'
       - '.github/workflows/windows-release.yml'
 permissions:
   contents: write
 jobs:
   windows:
     runs-on: windows-latest
+    concurrency:
+      group: windows-standalone-${{ github.ref }}
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: msys2/setup-msys2@v2
@@ -89,3 +92,22 @@ jobs:
           }
           gh release upload $tag SudokuValidation_Windows_Ready.zip --repo ${{ github.repository }} --clobber
           if ($LASTEXITCODE -ne 0) { throw "Failed to upload Windows ZIP" }
+      - name: Publish versioned release with verified Windows ZIP and PDFs
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: v1.2.1
+        run: |
+          $tag = $env:RELEASE_VERSION
+          $releases = gh release list --repo ${{ github.repository }} --limit 100 --json tagName
+          if ($LASTEXITCODE -ne 0) { throw "Failed to check releases" }
+          if (($releases | ConvertFrom-Json).tagName -contains $tag) { return }
+          $existingTag = git ls-remote --tags origin "refs/tags/$tag" "refs/tags/$tag^{}"
+          if ($LASTEXITCODE -ne 0) { throw "Failed to verify $tag" }
+          if ($existingTag -and ($existingTag -join "`n") -notmatch "(?m)^${{ github.sha }}\s") {
+            throw "$tag already points at a different commit"
+          }
+          $notes = "Built and smoke-tested from ${{ github.sha }}. Includes C worker diagnostics, CLI benchmark median, the updated user manual, and the original experiment report."
+          gh release create $tag SudokuValidation_Windows_Ready.zip docs/Manual.pdf docs/Report.pdf --repo ${{ github.repository }} --target "${{ github.sha }}" --title "$tag" --notes "$notes" --latest
+          if ($LASTEXITCODE -ne 0) { throw "Failed to publish $tag" }

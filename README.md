@@ -91,7 +91,7 @@ ready queue-ийн дараалал зэрэг параметрээр thread-и�
 
 ### Windows — бэлэн EXE
 
-**Windows-д ашиглах тогтмол хувилбар:** [v1.2.0 Windows ZIP-ийг татах](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/download/v1.2.0/SudokuValidation_Windows_Ready.zip). `SudokuValidation_Windows_Ready.zip`-ийг татаж, **Extract All** хийж бүрэн задлаад, доторх `SudokuValidation.exe`-г ажиллуулна. ZIP дотроос нь шууд HTML нээхгүй. Python болон GCC суулгах шаардлагагүй. Windows SmartScreen анхааруулга өгч болзошгүй; зөвхөн итгэлтэй эх сурвалжаас татсан файлыг ажиллуулна.
+**Windows-д ашиглах тогтмол хувилбар:** [v1.2.1 Windows ZIP-ийг татах](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/download/v1.2.1/SudokuValidation_Windows_Ready.zip). `SudokuValidation_Windows_Ready.zip`-ийг татаж, **Extract All** хийж бүрэн задлаад, доторх `SudokuValidation.exe`-г ажиллуулна. ZIP дотроос нь шууд HTML нээхгүй. Python болон GCC суулгах шаардлагагүй. Windows SmartScreen анхааруулга өгч болзошгүй; зөвхөн итгэлтэй эх сурвалжаас татсан файлыг ажиллуулна.
 
 **Эх кодоос ажиллуулах хуучин арга:** `START_WINDOWS.bat` нь GitHub-ийн **Code → Download ZIP**-ээр авсан эх кодын багцад хэвээр байна. Энэ арга нь Python болон C compiler (GCC) шаарддаг тул хөгжүүлэгч, багш, эх кодыг шалгах хүмүүст зориулагдсан. Энгийн хэрэглэгчид `.bat` ажиллуулах шаардлагагүй. `windows-release.yml` нь Windows EXE-г автоматаар build хийж шалгаад, `windows-latest` Release-д ZIP-г нийтэлдэг тохиргоо; хэрэглэгчид энэ YAML файлыг татахгүй.
 
@@ -137,12 +137,12 @@ Windows, macOS, Linux-ийн CI шалгалтыг [GitHub Actions](https://gith
 
 **Эх код:** Build, CI болон багц үүсгэх скриптүүд төслийн үндсэн хавтас дахь `sudoku_validator.c` файлыг ашигладаг.
 
-**Баримт бичиг:** [33 хуудастай тайлан](docs/Report.pdf) болон [8 хуудастай PDF гарын авлага](docs/Manual.pdf) нь илгээсэн хувилбарын баримтууд. Одоогийн эх кодын JSON оношилгоо, порт болон TSan-ийн зааврыг [шинэчилсэн гарын авлагаас](docs/USER_GUIDE.md) харна.
+**Баримт бичиг:** [33 хуудастай тайлан](docs/Report.pdf) нь илгээсэн туршилтын тайлан. [PDF гарын авлага](docs/Manual.pdf) болон [дэлгэрэнгүй заавар](docs/USER_GUIDE.md) нь v1.2.1-ийн хэрэглээг тайлбарлана.
 
 ## Хувилбар ба баталгаажуулалт
 
 - **Хуучин хувилбар:** `v1.0.0` нь CLI оролтын болон benchmark exit-code-ийн засвараас өмнөх код тул эцсийн хувилбар биш.
-- **Нийтэлсэн тогтмол хувилбар:** [`v1.2.0`](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/v1.2.0) нь `344bc35` commit дээр үүссэн бөгөөд Windows `SudokuValidation_Windows_Ready.zip` asset-тай. Энэ tag нь дараагийн `main` засваруудыг **агуулахгүй**.
+**Дугаартай хувилбар:** [v1.2.1](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/v1.2.1) Release-д Windows ZIP, тайлан, гарын авлага хавсаргана. Release-ийн tag нь тухайн Windows багцыг бүтээсэн commit-ийг заана.
 - **Хамгийн сүүлийн код:** `main` branch болон [GitHub Actions](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/actions)-ийн тухайн commit дээрх шалгалтыг харна. Build artifact, Release binary болон source commit-ийг ижил гэж таамаглахгүй.
 - **UI оношилгоо:** C хөдөлгүүрийн `-j` горим нь worker-ийн үр дүн, зөрчилтэй нүд, бүс тус бүрийн алдааг JSON-оор өгнө. Python гүүр уг үр дүнг Dashboard-д дамжуулж, тайлбарыг Монголоор хэлбэржүүлнэ.
 - **Sanitizer:** Linux/WSL2 дээр TSan `unexpected memory mapping` гэж зогсвол тухайн орчин зөвшөөрсөн үед `setarch "$(uname -m)" -R make test` гэж дахин ажиллуулна. Үндсэн тест болон sanitizer-ийн дүнг тусад нь тэмдэглэнэ.
@@ -152,7 +152,7 @@ Windows, macOS, Linux-ийн CI шалгалтыг [GitHub Actions](https://gith
 ## Харилцан шүүмжийн дараах нэмэлт шалгалт
 
 - `tests/test_review_regression.py` нь 1/11/27 горимд зөв, давхардсан болон хоосон нүдтэй самбарын API үр дүн, worker тоо, алдааны тэмдэглэгээг шалгана. C хөдөлгүүрийн системийн алдааг Sudoku-ийн буруу шийдэл гэж андуурахгүй эсэх, worker-ийн тооны зөрүү, буруу JSON утгуудыг мөн шалгана.
-- Benchmark-ийн хугацааны харьцааг CLI-тэй адил `олон урсгалын хугацаа / 1 урсгалын хугацаа` гэж тооцно: `1×`-ээс их нь удаан, бага нь хурдан. Энэ нь speedup биш, хугацааны коэффициент юм.
+- CLI benchmark нь дундаж, медиан, хамгийн бага, хамгийн их хугацааг харуулна. CLI-ийн харьцааг дунджаар, Dashboard-ийн харьцааг медианаар тооцно. Хоёуланд нь тухайн горимын хугацааг 1 урсгалын хугацаанд хуваана.
 - Dashboard-ын **Бүх горимыг харьцуулах** нь горим тус бүрийг нэг удаа ажиллуулдаг. **Benchmark** нь горим бүрийн олон давталтын медианыг ашигладаг; нэг удаагийн хэмжилтийг найдвартай performance ranking гэж үзэхгүй. Thread үүсгэх/хүлээх overhead 9×9 жижиг оролтод өндөр байж болно.
 - IV-2-2 багийн 12 логик цөмтэй WSL2 орчинд `-b 2000` хэмжилтээр 11 ба 27 урсгалын дундаж хугацаа 1 урсгалаас 4.13×, 13.03× байсан. V-1-10 багийн VM-д `-b 500` хэмжилтээр 16.49×, 42.90× гарсан. Орчин болон давталтын тоо өөр тул эдгээр нь тус тусын хэмжилтийн үр дүн юм.
 - `make test` нь sanitizer-уудыг заавал ажиллуулах Linux/тохирох compiler орчинд зориулагдсан. TSan runtime/kernel нийцэхгүй үед гарсан алдааг жинхэнэ data race гэж шууд дүгнэхгүй, гэхдээ амжилттай шалгалт гэж мөн тооцохгүй. CI дахь sanitizer job-ийн бодит үр дүнг тусад нь харна.
