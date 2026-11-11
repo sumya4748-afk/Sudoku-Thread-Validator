@@ -142,7 +142,7 @@ Windows, macOS, Linux-ийн CI шалгалтыг [GitHub Actions](https://gith
 - **Хуучин хувилбар:** `v1.0.0` нь CLI оролтын болон benchmark exit-code-ийн засвараас өмнөх код тул эцсийн хувилбар биш.
 - **Нийтэлсэн тогтмол хувилбар:** [`v1.2.0`](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/v1.2.0) нь `344bc35` commit дээр гарсан бөгөөд `SudokuValidation_Windows_Ready.zip` asset-тай. Дараагийн засварууд энэ tag-д автоматаар орохгүй.
 - **Хамгийн сүүлийн код:** `main` branch болон [GitHub Actions](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/actions)-ийн тухайн commit дээрх шалгалтыг харна. Build artifact, Release binary болон source commit-ийг ижил гэж таамаглахгүй.
-- **UI оношилгоо:** C/Pthreads нь зөв/буруу болон worker `valid[]` үр дүнг тогтооно. Python `server.py` нь `badCells` болон `issues`-ийг тооцоолж JSON-д буцаана. Dashboard серверийн `issues`-ийг харуулдаг; C-ийн дотоод `worker_report.issues` шууд JSON болоогүй.
+- **UI оношилгоо:** C/Pthreads нь зөв/буруу болон worker `valid[]` үр дүнг тогтооно. C `-j` горимд worker-ийн `reports[].issues`, `valid[]`, `badCells`-ийг JSON болгон гаргана. Python `server.py` энэ JSON-г уншиж, оношлогоог Монгол текст болгон дамжуулна.
 - **Sanitizer:** Linux-ийн зарим kernel дээр TSan `unexpected memory mapping` алдаатай байж болно. Үүнийг PASS гэж тооцохгүй; үндсэн тест, ASan/UBSan болон TSan-ийг тусад нь шалгана.
 - **Гар ажиллагааны тест:** CI-ийн амжилт нь Windows/macOS GUI-г бодит төхөөрөмж дээр ажиллуулсныг орлохгүй.
 
@@ -150,8 +150,8 @@ Windows, macOS, Linux-ийн CI шалгалтыг [GitHub Actions](https://gith
 ## Харилцан шүүмжийн дараах нэмэлт шалгалт
 
 - `tests/test_review_regression.py` нь 1/11/27 горимд зөв, давхардсан болон хоосон нүдтэй самбарын API үр дүн, worker тоо, алдааны тэмдэглэгээг шалгана. C хөдөлгүүрийн системийн алдааг Sudoku-ийн буруу шийдэл гэж андуурахгүй эсэх, worker-ийн тооны зөрүү, буруу JSON утгуудыг мөн шалгана.
-- `src/sudoku_validator.c` ба root `sudoku_validator.c` одоогоор ижил агуулгатай compatibility хуулбарууд. Автомат тест тэдгээрийн байт бүрийг харьцуулна. Root файлыг үндсэн build ашигладаг учраас хуулбарыг шууд устгаагүй; цаашид нэг файлд бүрэн шилжүүлэхдээ бүх build, documentation, release script-ийг зэрэг өөрчилнө.
-- Dashboard-ын `badCells` болон `issues` нь Python bridge дээр Sudoku-ийн мөр, багана, 3×3 бүсээс дахин тооцсон **тайлбарлах мэдээлэл** юм. Шийдэл зөв/буруу эсэх болон worker `valid[]`-ийн **үндсэн эх сурвалж нь C/Pthreads** хэвээр. C-ийн `worker_report.issues` шууд JSON болгож дамжуулах шинэ протокол одоогоор хэрэгжээгүй; тийм гэж тайлбарлахгүй.
+- `src/sudoku_validator.c` ба root `sudoku_validator.c` нь одоогоор ижил агуулгатай compatibility хуулбарууд. Автомат тест тэдгээрийн байт бүрийг харьцуулна. Root файлыг үндсэн build ашигладаг учраас хуулбарыг шууд устгаагүй; цаашид нэг файлд бүрэн шилжүүлэхдээ бүх build, documentation, release script-ийг зэрэг өөрчилнө.
+- Dashboard-ын `badCells` болон `issues` нь C worker-ийн `reports[]`-оос `-j` JSON хэлбэрээр гардаг. Python bridge зөвхөн JSON-г уншиж, Монгол тайлбар болгон хувиргана; Sudoku-ийн зөрчлийг дахин тооцохгүй.
 - Dashboard-ын **Бүх горимыг харьцуулах** нь горим тус бүрийг нэг удаа ажиллуулдаг. **Benchmark** нь горим бүрийн олон давталтын медианыг ашигладаг; нэг удаагийн хэмжилтийг найдвартай performance ranking гэж үзэхгүй. Thread үүсгэх/хүлээх overhead 9×9 жижиг оролтод өндөр байж болно.
 - `make test` нь sanitizer-уудыг заавал ажиллуулах Linux/тохирох compiler орчинд зориулагдсан. TSan runtime/kernel нийцэхгүй үед гарсан алдааг жинхэнэ data race гэж шууд дүгнэхгүй, гэхдээ амжилттай шалгалт гэж мөн тооцохгүй. CI дахь sanitizer job-ийн бодит үр дүнг тусад нь харна.
 - GitHub Actions-ийн Linux/macOS шалгалт Python unittest багцыг бүхэлд нь ажиллуулна. Windows artifact-ийн build амжилттай байх нь Windows дээр хэрэглэгч нээж ажиллуулсан баталгаа **биш**; Windows 10/11 дээр smoke test хийх шаардлага хэвээр.
