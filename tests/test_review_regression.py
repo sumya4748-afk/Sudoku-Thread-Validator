@@ -18,6 +18,19 @@ class ReviewRegression(unittest.TestCase):
                          (ROOT / 'src/sudoku_validator.c').read_bytes(),
                          'Root and src copies have diverged; keep them synchronized until consolidation.')
 
+    def test_dashboard_uses_server_diagnostics_and_consistent_time_ratio(self):
+        dashboard = (ROOT / 'dashboard.html').read_text(encoding='utf-8')
+        self.assertNotIn('function describeIssues(', dashboard)
+        self.assertIn('const issues=Array.isArray(j.issues)?j.issues:[];', dashboard)
+        self.assertIn('(measure[1].median/baseline).toFixed(2)', dashboard)
+        self.assertIn('(measure[2].median/baseline).toFixed(2)', dashboard)
+        self.assertNotIn('(baseline/measure[1].median)', dashboard)
+
+    def test_thread_creation_failure_joins_started_workers(self):
+        source = (ROOT / 'sudoku_validator.c').read_text(encoding='utf-8')
+        self.assertIn('free(data);\\n            for (int j = 0; j < i; j++)', source)
+        self.assertIn('int joined = pthread_join(tids[j], NULL);', source)
+
     def test_duplicate_and_empty_are_consistent_across_modes(self):
         duplicate = GOOD.copy()
         duplicate[0] = duplicate[1]
