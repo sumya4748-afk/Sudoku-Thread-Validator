@@ -4,7 +4,7 @@
 9×9 Sudoku-ийн **бүрэн бөглөсөн шийд** зөв эсэхийг C11/Pthreads хөдөлгүүрээр шалгана. 1, 11, 27 урсгалын горимыг сонгож, урсгал тус бүрийн үр дүн болон хугацааг харьцуулна. Энэ нь Sudoku-г автоматаар боддог програм биш.
 
 ## Windows дээр ажиллуулах
-1. [Windows-ийн бэлэн ZIP-ийг шууд татна](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/download/windows-latest/SudokuValidation_Windows_Ready.zip) (эсвэл [Releases хуудас](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/windows-latest)-наас `SudokuValidation_Windows_Ready.zip` сонгоно).
+1. [Windows-ийн бэлэн ZIP-ийг шууд татна](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/download/v1.2.0/SudokuValidation_Windows_Ready.zip) (эсвэл [Releases хуудас](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/v1.2.0)-наас `SudokuValidation_Windows_Ready.zip` сонгоно).
 2. ZIP-ийг **Extract All** хийнэ.
 3. Задалсан хавтасны `SudokuValidation.exe`-г нээнэ. Python, GCC суулгах шаардлагагүй.
 4. Хөтөч `http://127.0.0.1:8765/dashboard.html` хаягаар нээгдэнэ. Програмын серверийн цонхыг ажиллаж байх хугацаанд бүү хаа.
@@ -60,7 +60,7 @@
 
 ## Хувилбарын нийцэл, мэдэгдэж буй асуудал
 
-**Кодын хувилбар:** `v1.1.0` Release нь `106cca9` commit дээр үүссэн бөгөөд үндсэн dashboard diagnostics болон regression тестийг агуулна. Үүнээс хойш нэмэгдсэн засварууд Release-д автоматаар орохгүй. Хамгийн сүүлийн кодыг шалгахдаа `main`-ийн commit SHA-г тэмдэглэнэ. `windows-latest` нь хөдөлгөөнт ZIP тул тухайн binary аль commit-оос үүссэнийг Release-ийн workflow run-тай тулгана.
+**Кодын хувилбар:** `v1.2.0` Release нь `344bc35` commit дээр үүссэн. Шинэ засварууд энэ tag-д автоматаар орохгүй. Хамгийн сүүлийн кодыг шалгахдаа `main`-ийн commit SHA-г тэмдэглэнэ. Windows ZIP-ийг `v1.2.0` Release-ээс авна; GitHub Actions-ийн artifact нь Release-ийн asset-тай адил URL биш.
 
 **Linux/WSL2 дахь ThreadSanitizer:** `make test` үед `FATAL: ThreadSanitizer: unexpected memory mapping` алдаа гарч болно. Энэ нь зарим kernel, санах ойн байршуулалт болон TSan-ийн нийцлийн асуудал байж болох тул үндсэн C тест, Python unittest болон sanitizer-ийн үр дүнг тус тусад нь тэмдэглэнэ. Хэрэв орчин зөвшөөрвөл `setarch "$(uname -m)" -R make test` гэж ASLR-ийг тухайн процессын хэмжээнд унтраан дахин туршиж болно; зөвшөөрөлгүй орчинд ажиллахгүй байж болно. Системийн `sysctl` тохиргоог зөвхөн өөрийн удирддаг туршилтын машин дээр өөрчилнө. Алдаа үргэлжилбэл TSan-ийг PASS гэж тайлагнахгүй.
 
