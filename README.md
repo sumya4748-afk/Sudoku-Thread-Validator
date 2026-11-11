@@ -135,12 +135,12 @@ Windows, macOS, Linux-ийн CI шалгалтыг [GitHub Actions](https://gith
 
 **Repository бүтэц:** `src/sudoku_validator.c` нь root дахь `sudoku_validator.c`-ийн ижил агуулгатай хуулбар. Одоогийн build, CI, Windows/macOS багцууд root дахь файлыг ашигласан хэвээр тул ажиллаж буй замуудыг өөрчлөөгүй. Код өөрчлөхдөө хоёр файлыг ижил байлгах шаардлагатай; бүрэн шилжүүлэлт хийгдээгүй.
 
-**Баримт бичиг:** [Төслийн тайлан](docs/Report.pdf) (`docs/Report.pdf`, 1,665,674 байт) репод байна. [Хэрэглэгчийн бүрэн заавар](docs/USER_GUIDE.md) нь GitHub дээр шууд уншигдана. Тусдаа `docs/Manual.pdf` одоогоор байхгүй; 8 хуудас PDF Manual-г эх файлынх нь хамт оруулах шаардлагатай. `docs/REPORT_AI_UI_NOTES.md` нь нэмэлт тэмдэглэл.
+**Баримт бичиг:** [Төслийн тайлан](docs/Report.pdf) (`docs/Report.pdf`, 1,665,674 байт) репод байна. [Хэрэглэгчийн бүрэн заавар](docs/USER_GUIDE.md) нь GitHub дээр шууд уншигдана. [PDF гарын авлага](docs/Manual.pdf) (`docs/Manual.pdf`, 325,368 байт) репод нэмэгдсэн. PDF-ийн агуулгыг шинэ кодтой тулгаж гар ажиллагаагаар шалгана. `docs/REPORT_AI_UI_NOTES.md` нь нэмэлт тэмдэглэл.
 
 ## Хувилбар ба баталгаажуулалт
 
 - **Хуучин хувилбар:** `v1.0.0` нь CLI оролтын болон benchmark exit-code-ийн засвараас өмнөх код тул эцсийн хувилбар биш.
-- **Нийтэлсэн тогтмол хувилбар:** [`v1.1.0`](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/v1.1.0) нь `106cca9` commit дээр үүссэн бөгөөд Windows `SudokuValidation.zip` asset-тай. Энэ tag нь дараагийн `main` засваруудыг **агуулахгүй**.
+- **Нийтэлсэн тогтмол хувилбар:** [`v1.2.0`](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/v1.2.0) нь `344bc35` commit дээр үүссэн бөгөөд Windows `SudokuValidation_Windows_Ready.zip` asset-тай. Энэ tag нь дараагийн `main` засваруудыг **агуулахгүй**.
 - **Хамгийн сүүлийн код:** `main` branch болон [GitHub Actions](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/actions)-ийн тухайн commit дээрх шалгалтыг харна. Build artifact, Release binary болон source commit-ийг ижил гэж таамаглахгүй.
 - **UI оношилгоо:** C/Pthreads нь зөв/буруу болон worker `valid[]` үр дүнг тогтооно. Python `server.py` нь `badCells` болон `issues`-ийг тооцоолж JSON-д буцаана. Dashboard серверийн `issues`-ийг харуулдаг; C-ийн дотоод `worker_report.issues` шууд JSON болоогүй.
 - **Sanitizer:** Linux-ийн зарим kernel дээр TSan `unexpected memory mapping` алдаатай байж болно. Үүнийг PASS гэж тооцохгүй; үндсэн тест, ASan/UBSan болон TSan-ийг тусад нь шалгана.
@@ -152,6 +152,7 @@ Windows, macOS, Linux-ийн CI шалгалтыг [GitHub Actions](https://gith
 - `tests/test_review_regression.py` нь 1/11/27 горимд зөв, давхардсан болон хоосон нүдтэй самбарын API үр дүн, worker тоо, алдааны тэмдэглэгээг шалгана. C хөдөлгүүрийн системийн алдааг Sudoku-ийн буруу шийдэл гэж андуурахгүй эсэх, worker-ийн тооны зөрүү, буруу JSON утгуудыг мөн шалгана.
 - `src/sudoku_validator.c` ба root `sudoku_validator.c` одоогоор ижил агуулгатай compatibility хуулбарууд. Автомат тест тэдгээрийн байт бүрийг харьцуулна. Root файлыг үндсэн build ашигладаг учраас хуулбарыг шууд устгаагүй; цаашид нэг файлд бүрэн шилжүүлэхдээ бүх build, documentation, release script-ийг зэрэг өөрчилнө.
 - Dashboard-ын `badCells` болон `issues` нь Python bridge дээр Sudoku-ийн мөр, багана, 3×3 бүсээс дахин тооцсон **тайлбарлах мэдээлэл** юм. Шийдэл зөв/буруу эсэх болон worker `valid[]`-ийн **үндсэн эх сурвалж нь C/Pthreads** хэвээр. C-ийн `worker_report.issues` шууд JSON болгож дамжуулах шинэ протокол одоогоор хэрэгжээгүй; тийм гэж тайлбарлахгүй.
+- Benchmark-ийн хугацааны харьцааг CLI-тэй адил `олон урсгалын хугацаа / 1 урсгалын хугацаа` гэж тооцно: `1×`-ээс их нь удаан, бага нь хурдан. Энэ нь speedup биш, хугацааны коэффициент юм.
 - Dashboard-ын **Бүх горимыг харьцуулах** нь горим тус бүрийг нэг удаа ажиллуулдаг. **Benchmark** нь горим бүрийн олон давталтын медианыг ашигладаг; нэг удаагийн хэмжилтийг найдвартай performance ranking гэж үзэхгүй. Thread үүсгэх/хүлээх overhead 9×9 жижиг оролтод өндөр байж болно.
 - `make test` нь sanitizer-уудыг заавал ажиллуулах Linux/тохирох compiler орчинд зориулагдсан. TSan runtime/kernel нийцэхгүй үед гарсан алдааг жинхэнэ data race гэж шууд дүгнэхгүй, гэхдээ амжилттай шалгалт гэж мөн тооцохгүй. CI дахь sanitizer job-ийн бодит үр дүнг тусад нь харна.
 - GitHub Actions-ийн Linux/macOS шалгалт Python unittest багцыг бүхэлд нь ажиллуулна. Windows artifact-ийн build амжилттай байх нь Windows дээр хэрэглэгч нээж ажиллуулсан баталгаа **биш**; Windows 10/11 дээр smoke test хийх шаардлага хэвээр.
