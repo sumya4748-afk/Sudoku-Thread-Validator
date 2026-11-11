@@ -45,10 +45,20 @@ class ReviewRegression(unittest.TestCase):
     def test_worker_count_mismatch_is_rejected(self):
         with patch.object(server, 'BINARY') as binary, patch.object(
             server.subprocess, 'run', return_value=SimpleNamespace(
-                returncode=0, stdout='valid[] = [1 1]\\nХугацаа: 1.0 мкс', stderr='')):
+                returncode=0, stdout='{"valid":true,"mode":11,"microseconds":1.0,"flags":[1,1],"badCells":[],"issues":[]}', stderr='')):
             binary.is_file.return_value = True
             with self.assertRaisesRegex(RuntimeError, 'тоо зөрлөө'):
                 server.check({'board': GOOD, 'mode': 11})
+
+    def test_engine_json_is_source_of_cell_diagnostics(self):
+        data = '{"valid":false,"mode":1,"microseconds":1.25,"flags":[0],"badCells":[0,1],"issues":[{"region":0,"regionNo":0,"kind":0,"digit":5,"row":0,"col":1}]}'
+        with patch.object(server, 'BINARY') as binary, patch.object(
+            server.subprocess, 'run', return_value=SimpleNamespace(
+                returncode=1, stdout=data, stderr='')):
+            binary.is_file.return_value = True
+            result = server.check({'board': GOOD, 'mode': 1})
+            self.assertEqual(result['badCells'], [0, 1])
+            self.assertIn('давхардсан', result['issues'][0])
 
     def test_input_validation_rejects_bool_float_and_invalid_mode(self):
         for board, mode in (([True]*81, 11), ([1.0]*81, 11), (GOOD, True),
