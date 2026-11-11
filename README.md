@@ -91,7 +91,7 @@ ready queue-ийн дараалал зэрэг параметрээр thread-и�
 
 ### Windows — бэлэн EXE
 
-**Windows-д ашиглах нэг арга (хөдөлгөөнт `windows-latest` багц; тогтмол хувилбар биш):** [Windows ZIP-ийг шууд татах](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/download/windows-latest/SudokuValidation_Windows_Ready.zip) (эсвэл [Releases хуудас](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/windows-latest)). `SudokuValidation_Windows_Ready.zip`-ийг татаж, **Extract All** хийж бүрэн задлаад, доторх `SudokuValidation.exe`-г ажиллуулна. ZIP дотроос нь шууд HTML нээхгүй. Python болон GCC суулгах шаардлагагүй. Windows SmartScreen анхааруулга өгч болзошгүй; зөвхөн итгэлтэй эх сурвалжаас татсан файлыг ажиллуулна.
+**Windows-д ашиглах тогтмол хувилбар:** [v1.2.0 Windows ZIP-ийг татах](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/download/v1.2.0/SudokuValidation_Windows_Ready.zip). `SudokuValidation_Windows_Ready.zip`-ийг татаж, **Extract All** хийж бүрэн задлаад, доторх `SudokuValidation.exe`-г ажиллуулна. ZIP дотроос нь шууд HTML нээхгүй. Python болон GCC суулгах шаардлагагүй. Windows SmartScreen анхааруулга өгч болзошгүй; зөвхөн итгэлтэй эх сурвалжаас татсан файлыг ажиллуулна.
 
 **Эх кодоос ажиллуулах хуучин арга:** `START_WINDOWS.bat` нь GitHub-ийн **Code → Download ZIP**-ээр авсан эх кодын багцад хэвээр байна. Энэ арга нь Python болон C compiler (GCC) шаарддаг тул хөгжүүлэгч, багш, эх кодыг шалгах хүмүүст зориулагдсан. Энгийн хэрэглэгчид `.bat` ажиллуулах шаардлагагүй. `windows-release.yml` нь Windows EXE-г автоматаар build хийж шалгаад, `windows-latest` Release-д ZIP-г нийтэлдэг тохиргоо; хэрэглэгчид энэ YAML файлыг татахгүй.
 
@@ -119,6 +119,8 @@ bash run_tests.sh
 
 Windows, macOS, Linux-ийн CI шалгалтыг [GitHub Actions](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/actions) хэсгээс харна. Тестийн тоо, benchmark үр дүн нь орчин, хувилбар бүрээр өөрчлөгдөж болно.
 
+Порт 8765 завгүй бол `python3 server.py --port 8766` гэж асаагаад `http://127.0.0.1:8766/dashboard.html` хаягийг нээнэ.
+
 ### Дэлгэрэнгүй заавар
 
 [Хэрэглэгчийн гарын авлага](docs/USER_GUIDE.md). Dashboard-ийн **Алхмаар үзүүлэх** нь C-ээс буцсан үр дүнг тайлбарлан дахин тоглуулдаг; OS thread scheduler-ийн live trace биш. Сервер зөвхөн `127.0.0.1` дээр ажиллана.
@@ -133,26 +135,25 @@ Windows, macOS, Linux-ийн CI шалгалтыг [GitHub Actions](https://gith
 - **Сургалтын симуляц:** `ui/sudoku_threads.html` дахь CPU core, ready queue, Gantt болон tick-ийн дүрслэл нь thread scheduling-ийн **загварчилсан** тайлбар бөгөөд бодит үйлдлийн системийн scheduler trace эсвэл C thread-үүдийн хэмжсэн хугацаа биш.
 - **Хугацааны хэмжилт:** Бодит benchmark-ийн тоонуудыг C engine-ээс авна; симуляцын tick-тэй харьцуулж бодит хэмжилт гэж үзэхгүй.
 
-**Repository бүтэц:** `src/sudoku_validator.c` нь root дахь `sudoku_validator.c`-ийн ижил агуулгатай хуулбар. Одоогийн build, CI, Windows/macOS багцууд root дахь файлыг ашигласан хэвээр тул ажиллаж буй замуудыг өөрчлөөгүй. Код өөрчлөхдөө хоёр файлыг ижил байлгах шаардлагатай; бүрэн шилжүүлэлт хийгдээгүй.
+**Эх код:** Build, CI болон багц үүсгэх скриптүүд төслийн үндсэн хавтас дахь `sudoku_validator.c` файлыг ашигладаг.
 
-**Баримт бичиг:** [Төслийн тайлан](docs/Report.pdf) (`docs/Report.pdf`, 1,665,674 байт) репод байна. [Хэрэглэгчийн бүрэн заавар](docs/USER_GUIDE.md) нь GitHub дээр шууд уншигдана. [PDF гарын авлага](docs/Manual.pdf) (`docs/Manual.pdf`, 325,368 байт) репод нэмэгдсэн. PDF-ийн агуулгыг шинэ кодтой тулгаж гар ажиллагаагаар шалгана. `docs/REPORT_AI_UI_NOTES.md` нь нэмэлт тэмдэглэл.
+**Баримт бичиг:** [33 хуудастай тайлан](docs/Report.pdf) болон [8 хуудастай PDF гарын авлага](docs/Manual.pdf) нь илгээсэн хувилбарын баримтууд. Одоогийн эх кодын JSON оношилгоо, порт болон TSan-ийн зааврыг [шинэчилсэн гарын авлагаас](docs/USER_GUIDE.md) харна.
 
 ## Хувилбар ба баталгаажуулалт
 
 - **Хуучин хувилбар:** `v1.0.0` нь CLI оролтын болон benchmark exit-code-ийн засвараас өмнөх код тул эцсийн хувилбар биш.
 - **Нийтэлсэн тогтмол хувилбар:** [`v1.2.0`](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/v1.2.0) нь `344bc35` commit дээр үүссэн бөгөөд Windows `SudokuValidation_Windows_Ready.zip` asset-тай. Энэ tag нь дараагийн `main` засваруудыг **агуулахгүй**.
 - **Хамгийн сүүлийн код:** `main` branch болон [GitHub Actions](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/actions)-ийн тухайн commit дээрх шалгалтыг харна. Build artifact, Release binary болон source commit-ийг ижил гэж таамаглахгүй.
-- **UI оношилгоо:** C/Pthreads нь зөв/буруу болон worker `valid[]` үр дүнг тогтооно. Python `server.py` нь `badCells` болон `issues`-ийг тооцоолж JSON-д буцаана. Dashboard серверийн `issues`-ийг харуулдаг; C-ийн дотоод `worker_report.issues` шууд JSON болоогүй.
-- **Sanitizer:** Linux-ийн зарим kernel дээр TSan `unexpected memory mapping` алдаатай байж болно. Үүнийг PASS гэж тооцохгүй; үндсэн тест, ASan/UBSan болон TSan-ийг тусад нь шалгана.
+- **UI оношилгоо:** C хөдөлгүүрийн `-j` горим нь worker-ийн үр дүн, зөрчилтэй нүд, бүс тус бүрийн алдааг JSON-оор өгнө. Python гүүр уг үр дүнг Dashboard-д дамжуулж, тайлбарыг Монголоор хэлбэржүүлнэ.
+- **Sanitizer:** Linux/WSL2 дээр TSan `unexpected memory mapping` гэж зогсвол тухайн орчин зөвшөөрсөн үед `setarch "$(uname -m)" -R make test` гэж дахин ажиллуулна. Үндсэн тест болон sanitizer-ийн дүнг тусад нь тэмдэглэнэ.
 - **Гар ажиллагааны тест:** CI-ийн амжилт нь Windows/macOS GUI-г бодит төхөөрөмж дээр ажиллуулсныг орлохгүй.
 
 
 ## Харилцан шүүмжийн дараах нэмэлт шалгалт
 
 - `tests/test_review_regression.py` нь 1/11/27 горимд зөв, давхардсан болон хоосон нүдтэй самбарын API үр дүн, worker тоо, алдааны тэмдэглэгээг шалгана. C хөдөлгүүрийн системийн алдааг Sudoku-ийн буруу шийдэл гэж андуурахгүй эсэх, worker-ийн тооны зөрүү, буруу JSON утгуудыг мөн шалгана.
-- `src/sudoku_validator.c` ба root `sudoku_validator.c` одоогоор ижил агуулгатай compatibility хуулбарууд. Автомат тест тэдгээрийн байт бүрийг харьцуулна. Root файлыг үндсэн build ашигладаг учраас хуулбарыг шууд устгаагүй; цаашид нэг файлд бүрэн шилжүүлэхдээ бүх build, documentation, release script-ийг зэрэг өөрчилнө.
-- Dashboard-ын `badCells` болон `issues` нь Python bridge дээр Sudoku-ийн мөр, багана, 3×3 бүсээс дахин тооцсон **тайлбарлах мэдээлэл** юм. Шийдэл зөв/буруу эсэх болон worker `valid[]`-ийн **үндсэн эх сурвалж нь C/Pthreads** хэвээр. C-ийн `worker_report.issues` шууд JSON болгож дамжуулах шинэ протокол одоогоор хэрэгжээгүй; тийм гэж тайлбарлахгүй.
 - Benchmark-ийн хугацааны харьцааг CLI-тэй адил `олон урсгалын хугацаа / 1 урсгалын хугацаа` гэж тооцно: `1×`-ээс их нь удаан, бага нь хурдан. Энэ нь speedup биш, хугацааны коэффициент юм.
 - Dashboard-ын **Бүх горимыг харьцуулах** нь горим тус бүрийг нэг удаа ажиллуулдаг. **Benchmark** нь горим бүрийн олон давталтын медианыг ашигладаг; нэг удаагийн хэмжилтийг найдвартай performance ranking гэж үзэхгүй. Thread үүсгэх/хүлээх overhead 9×9 жижиг оролтод өндөр байж болно.
+- IV-2-2 багийн 12 логик цөмтэй WSL2 орчинд `-b 2000` хэмжилтээр 11 ба 27 урсгалын дундаж хугацаа 1 урсгалаас 4.13×, 13.03× байсан. V-1-10 багийн VM-д `-b 500` хэмжилтээр 16.49×, 42.90× гарсан. Орчин болон давталтын тоо өөр тул эдгээр нь тус тусын хэмжилтийн үр дүн юм.
 - `make test` нь sanitizer-уудыг заавал ажиллуулах Linux/тохирох compiler орчинд зориулагдсан. TSan runtime/kernel нийцэхгүй үед гарсан алдааг жинхэнэ data race гэж шууд дүгнэхгүй, гэхдээ амжилттай шалгалт гэж мөн тооцохгүй. CI дахь sanitizer job-ийн бодит үр дүнг тусад нь харна.
 - GitHub Actions-ийн Linux/macOS шалгалт Python unittest багцыг бүхэлд нь ажиллуулна. Windows artifact-ийн build амжилттай байх нь Windows дээр хэрэглэгч нээж ажиллуулсан баталгаа **биш**; Windows 10/11 дээр smoke test хийх шаардлага хэвээр.

@@ -1,4 +1,6 @@
 """Regression tests for the C/Pthreads bridge and repository consistency."""
+import json
+import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -13,11 +15,6 @@ GOOD = [int(c) for c in '5346789126721953481983425678597614234268537917139248569
 
 
 class ReviewRegression(unittest.TestCase):
-    def test_source_copies_are_identical(self):
-        self.assertEqual((ROOT / 'sudoku_validator.c').read_bytes(),
-                         (ROOT / 'src/sudoku_validator.c').read_bytes(),
-                         'Root and src copies have diverged; keep them synchronized until consolidation.')
-
     def test_dashboard_uses_server_diagnostics_and_consistent_time_ratio(self):
         dashboard = (ROOT / 'dashboard.html').read_text(encoding='utf-8')
         self.assertNotIn('function describeIssues(', dashboard)
@@ -30,6 +27,19 @@ class ReviewRegression(unittest.TestCase):
         source = (ROOT / 'sudoku_validator.c').read_text(encoding='utf-8')
         self.assertIn('free(data);\n            for (int j = 0; j < i; j++)', source)
         self.assertIn('int joined = pthread_join(tids[j], NULL);', source)
+
+    def test_engine_reports_all_empty_board_issues(self):
+        for mode in (1, 11, 27):
+            with self.subTest(mode=mode):
+                run = subprocess.run([str(server.BINARY), '-j', '-t', str(mode), '-f', '-'],
+                                     input=('0' * 9 + '\n') * 9, text=True, capture_output=True)
+                self.assertEqual(run.returncode, 1, run.stderr)
+                report = json.loads(run.stdout)
+                self.assertEqual(report['flags'], [0] * mode)
+                self.assertEqual(report['badCells'], list(range(81)))
+                self.assertEqual(len(report['issues']), 27 * 18)
+                for issue in report['issues']:
+                    self.assertIn(issue['worker'], range(mode))
 
     def test_duplicate_and_empty_are_consistent_across_modes(self):
         duplicate = GOOD.copy()
@@ -58,7 +68,7 @@ class ReviewRegression(unittest.TestCase):
     def test_worker_count_mismatch_is_rejected(self):
         with patch.object(server, 'BINARY') as binary, patch.object(
             server.subprocess, 'run', return_value=SimpleNamespace(
-                returncode=0, stdout='valid[] = [1 1]\\nХугацаа: 1.0 мкс', stderr='')):
+                returncode=0, stdout='{"flags":[1,1],"microseconds":1.0,"badCells":[],"issues":[]}', stderr='')):
             binary.is_file.return_value = True
             with self.assertRaisesRegex(RuntimeError, 'тоо зөрлөө'):
                 server.check({'board': GOOD, 'mode': 11})

@@ -427,6 +427,41 @@ static void mark_bad_cells(int bad[N][N], int n_workers) {
         }
 }
 
+/* Machine-readable report for the dashboard bridge, emitted after all joins. */
+static void print_json(int n_workers, double us) {
+    int bad[N][N] = {{0}};
+    mark_bad_cells(bad, n_workers);
+
+    printf("{\"flags\":[");
+    for (int w = 0; w < n_workers; w++) printf("%s%d", w ? "," : "", valid[w]);
+    printf("],\"microseconds\":%.1f,\"badCells\":[", us);
+    const char *separator = "";
+    for (int r = 0; r < N; r++) {
+        for (int c = 0; c < N; c++) {
+            if (bad[r][c]) {
+                printf("%s%d", separator, r * N + c);
+                separator = ",";
+            }
+        }
+    }
+
+    printf("],\"issues\":[");
+    separator = "";
+    const char *regions[] = {"row", "col", "box"};
+    const char *kinds[] = {"duplicate", "range", "missing"};
+    for (int w = 0; w < n_workers; w++) {
+        for (int i = 0; i < reports[w].n_issues; i++) {
+            const issue *is = &reports[w].issues[i];
+            printf("%s{\"worker\":%d,\"region\":\"%s\",\"number\":%d,"
+                   "\"kind\":\"%s\",\"digit\":%d,\"row\":%d,\"column\":%d}",
+                   separator, w, regions[is->region], is->region_no + 1,
+                   kinds[is->kind], is->digit, is->r + 1, is->c + 1);
+            separator = ",";
+        }
+    }
+    puts("]}");
+}
+
 static void print_grid(int bad[N][N]) {
     for (int r = 0; r < N; r++) {
         if (r % 3 == 0) printf("  +-------+-------+-------+\n");
@@ -502,6 +537,7 @@ static void usage(const char *prog) {
         "  -t MODE   thread-ийн стратеги: 11 (анхдагч), 27, 1\n"
         "  -b REPS   1 / 11 / 27 горимыг REPS (1-1000000) удаа ажиллуулж хугацаа харьцуулах\n"
         "  -v        thread бүрийн үүсгэлт, эхлэл, төгсгөлийг хэвлэх\n"
+        "  -j        нэг шалгалтын үр дүнг JSON хэлбэрээр хэвлэх\n"
         "  -q        зөвхөн эцсийн дүнг хэвлэх\n"
         "  -h        энэ тусламж\n"
         "Оролт өгөөгүй бол сурах бичгийн Figure 4.26-ийн жишээг ашиглана.\n"
@@ -514,9 +550,9 @@ int main(int argc, char *argv[]) {
     long long seed = -1, num;
     int errors = 0, mode = 11, bench = 0;
     int sets[N * N][3], n_sets = 0;
-    int opt;
+    int opt, json = 0;
 
-    while ((opt = getopt(argc, argv, "f:g:e:s:t:b:vqh")) != -1) {
+    while ((opt = getopt(argc, argv, "f:g:e:s:t:b:vqjh")) != -1) {
         switch (opt) {
         case 'f':
             if (file) { fprintf(stderr, "-f нэг л удаа өгөгдөнө\n"); return 2; }
@@ -558,6 +594,7 @@ int main(int argc, char *argv[]) {
         case 't': if (parse_num("t", optarg, 1, 27, &num)) return 2; mode = (int)num; break;
         case 'b': if (parse_num("b", optarg, 1, 1000000, &num)) return 2; bench = (int)num; break;
         case 'v': verbose = 1; break;
+        case 'j': json = 1; break;
         case 'q': quiet = 1; break;
         case 'h': usage(argv[0]); return 0;
         default: usage(argv[0]); return 2;
@@ -568,6 +605,14 @@ int main(int argc, char *argv[]) {
     if (mode != 1 && mode != 11 && mode != 27) {
         fprintf(stderr, "-t зөвхөн 1, 11, 27 байж болно\n");
         return 2;
+    }
+    if (json && bench) {
+        fprintf(stderr, "-j болон -b хамт хэрэглэх боломжгүй\n");
+        return 2;
+    }
+    if (json) {
+        quiet = 1;
+        verbose = 0;
     }
     use_color = isatty(STDOUT_FILENO);
 
@@ -632,6 +677,10 @@ int main(int argc, char *argv[]) {
     int n_workers;
     double us;
     int ok = run_validation(mode, &n_workers, &us);
+    if (json) {
+        print_json(n_workers, us);
+        return ok ? 0 : 1;
+    }
 
     if (!quiet) {
         print_results(n_workers);

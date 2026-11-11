@@ -6,7 +6,6 @@ import socket
 import threading
 import webbrowser
 from pathlib import Path
-from http.server import ThreadingHTTPServer
 
 BASE = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parent))
 os.chdir(BASE)
@@ -14,13 +13,10 @@ import server
 server.ROOT = BASE
 server.BINARY = BASE / ('sudoku_validator.exe' if os.name == 'nt' else 'sudoku_validator')
 
-class ReusableServer(ThreadingHTTPServer):
-    allow_reuse_address = True
-
 def main():
     host, port = '127.0.0.1', 8765
     try:
-        httpd = ReusableServer((host, port), server.Handler)
+        httpd = server.LocalHTTPServer((host, port), server.Handler)
     except OSError as exc:
         print('Port 8765 is busy. Close the previous Sudoku window. ' + str(exc))
         input('Press Enter to exit...')
