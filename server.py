@@ -163,11 +163,17 @@ class Handler(SimpleHTTPRequestHandler):
         finally:
             MAX_ACTIVE.release()
 
+class LocalHTTPServer(ThreadingHTTPServer):
+    # Accept queued connections under short bursts; active C validations remain bounded.
+    request_queue_size = 128
+    daemon_threads = True
+
+
 if __name__ == '__main__':
     host, port = '127.0.0.1', 8765
     print(f'Бодит Pthreads интерфэйс: http://{host}:{port}/dashboard.html', flush=True)
     try:
-        ThreadingHTTPServer((host, port), Handler).serve_forever()
+        LocalHTTPServer((host, port), Handler).serve_forever()
     except KeyboardInterrupt:
         print('\nСервер зогслоо.')
     except OSError as exc:
