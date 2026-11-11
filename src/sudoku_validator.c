@@ -238,7 +238,11 @@ static int run_validation(int mode, int *n_workers, double *elapsed_us) {
 
     for (int i = 0; i < n; i++) {
         parameters *data = (parameters *)malloc(sizeof(parameters));
-        if (!data) { perror("malloc"); exit(2); }
+        if (!data) {
+            perror("malloc");
+            for (int j = 0; j < i; j++) { pthread_join(tids[j], NULL); free(params[j]); }
+            exit(2);
+        }
         data->row = plan[i].row;
         data->column = plan[i].column;
         data->count = plan[i].count;
@@ -251,6 +255,8 @@ static int run_validation(int mode, int *n_workers, double *elapsed_us) {
         int rc = pthread_create(&tids[i], NULL, plan[i].fn, data);
         if (rc != 0) {
             fprintf(stderr, "pthread_create алдаа (#%d): %s\n", i, strerror(rc));
+            free(data);
+            for (int j = 0; j < i; j++) { pthread_join(tids[j], NULL); free(params[j]); }
             exit(2);
         }
     }
