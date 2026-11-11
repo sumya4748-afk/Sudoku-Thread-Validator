@@ -91,13 +91,28 @@ for ((s=1; s<=STRESS; s++)); do
 done
 echo "  дууслаа"
 
-for SAN in tsan asan; do
+# Preserve sanitizer failures, including unsupported kernel/runtime combinations.
+for SAN in ${SANITIZERS-tsan asan}; do
   SB=./sudoku_validator_$SAN
   if [ -x "$SB" ]; then
     echo "== 4. $SAN: 50 судоку x 3 горим =="
+    sanitizer_cmd=("$SB")
+    if [ "$SAN" = tsan ]; then
+      probe=$("$SB" -q -t 1 2>&1)
+      if [[ "$probe" == *"unexpected memory mapping"* ]]; then
+        if command -v setarch >/dev/null && setarch "$(uname -m)" -R "$SB" -q -t 1 >/dev/null 2>&1; then
+          sanitizer_cmd=(setarch "$(uname -m)" -R "$SB")
+          echo "  TSan: setarch -R ашиглаж шалгана."
+        else
+          bad "TSan ажиллуулах боломжгүй: unexpected memory mapping; setarch -R зөвшөөрөгдөөгүй эсвэл ажилласангүй."
+          echo "  Үндсэн тестийг тусад нь: make test-core. TSan-ийг GitHub Actions-ийн Ubuntu sanitizer job дээр шалгана уу."
+          continue
+        fi
+      fi
+    fi
     for ((s=1; s<=50; s++)); do
       for mode in 1 11 27; do
-        out=$("$SB" -q -t $mode -g $s -e $((s % 3)) 2>&1)
+        out=$("${sanitizer_cmd[@]}" -q -t "$mode" -g "$s" -e $((s % 3)) 2>&1)
         rc=$?
         expected=0
         [ $((s % 3)) -eq 0 ] || expected=1

@@ -64,6 +64,8 @@ mutex шаардлагагүй; `pthread_join()` нь бичилт parent-д х�
 4. ThreadSanitizer, AddressSanitizer + UBSan: 50 судоку × 3 горим; үр дүнг тухайн CI run-ээс шалгана.
    Хяналтын туршилт: worker бүр `valid[0]`-д бичдэг болгож өөрчлөхөд TSan data race-ийг илрүүлсэн.
 
+`make test-core` нь sanitizer-гүй үндсэн тестүүдийг ажиллуулна. Энэ засварын Linux орчинд 1870 үндсэн шалгалт амжилттай. Энэ орчинд LeakSanitizer ажиллаагүй. `ASAN_OPTIONS=detect_leaks=0 make test` командаар 2170 шалгалт амжилттай болсон. LeakSanitizer-тай бүтэн шалгалтын дүнг тухайн CI run-ээс харна. TSan-ийн `unexpected memory mapping` алдаанд скрипт `setarch -R`-ийг боломжтой үед ашиглана. Орчин зөвшөөрөхгүй бол `make test` алдаатай дуусна.
+
 ## Хурдны хэмжилт (`-b 2000`, 2 vCPU Linux, gcc 13.3 -O2)
 
 | Горим | Thread | Дундаж (мкс) | Хамгийн бага (мкс) | 1 thread-тэй харьцуулахад |
@@ -75,6 +77,16 @@ mutex шаардлагагүй; `pthread_join()` нь бичилт parent-д х�
 Нэг судоку шалгах ажил ~243 харьцуулалт буюу хэдхэн микросекунд. Thread үүсгэх, join хийх
 зардал (~15–25 мкс/thread) түүнээс хэд дахин их тул энэ хэмжээний ажилд олон thread хурд нэмэхгүй.
 Зэрэгцээ байдал нь ажил том үед (жишээ нь олон мянган судоку багцаар) ашигтай.
+
+Өөр орчинд хэмжсэн дундаж хугацааны харьцаа (11/1 ба 27/1):
+
+| Орчин | Давталт | 11 / 1 | 27 / 1 |
+|---|---:|---:|---:|
+| Тайлангийн 2 vCPU Linux (энэ хэсгийн хэмжилт) | 2000 | 6.12× | 14.12× |
+| IV-2-2, WSL2 Debian, 12 логик цөм | 2000 | 4.13× | 13.03× |
+| Засвар шалгасан Linux, 9 харагдах CPU, GCC 14.2.0 | 500 | 10.31× | 20.48× |
+
+Сүүлийн хэмжилтийн дээд утгууд 1/11/27 горимд 2205.38, 6754.63, 25667.35 мкс. Dashboard медианаар харьцуулж, баганан дээр хамгийн бага ба их утгыг харуулна. Эдгээр туршилтын орчин, давталтын тоо ялгаатай.
 
 ## Интерактив дүрслэл
 
@@ -91,9 +103,9 @@ ready queue-ийн дараалал зэрэг параметрээр thread-и�
 
 ### Windows — бэлэн EXE
 
-**Windows-д ашиглах нэг арга (хөдөлгөөнт `windows-latest` багц; тогтмол хувилбар биш):** [Windows ZIP-ийг шууд татах](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/download/windows-latest/SudokuValidation_Windows_Ready.zip) (эсвэл [Releases хуудас](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/windows-latest)). `SudokuValidation_Windows_Ready.zip`-ийг татаж, **Extract All** хийж бүрэн задлаад, доторх `SudokuValidation.exe`-г ажиллуулна. ZIP дотроос нь шууд HTML нээхгүй. Python болон GCC суулгах шаардлагагүй. Windows SmartScreen анхааруулга өгч болзошгүй; зөвхөн итгэлтэй эх сурвалжаас татсан файлыг ажиллуулна.
+**Windows-д бэлэн EXE:** [Сүүлийн дугаартай release](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/latest)-ээс багцаа авна. `SudokuValidation_Windows_Ready.zip`-ийг татаж, **Extract All** хийж бүрэн задлаад, доторх `SudokuValidation.exe`-г ажиллуулна. ZIP дотроос нь шууд HTML нээхгүй. Python болон GCC суулгах шаардлагагүй. Windows SmartScreen анхааруулга өгч болзошгүй; зөвхөн итгэлтэй эх сурвалжаас татсан файлыг ажиллуулна.
 
-**Эх кодоос ажиллуулах хуучин арга:** `START_WINDOWS.bat` нь GitHub-ийн **Code → Download ZIP**-ээр авсан эх кодын багцад хэвээр байна. Энэ арга нь Python болон C compiler (GCC) шаарддаг тул хөгжүүлэгч, багш, эх кодыг шалгах хүмүүст зориулагдсан. Энгийн хэрэглэгчид `.bat` ажиллуулах шаардлагагүй. `windows-release.yml` нь Windows EXE-г автоматаар build хийж шалгаад, `windows-latest` Release-д ZIP-г нийтэлдэг тохиргоо; хэрэглэгчид энэ YAML файлыг татахгүй.
+**Эх кодоос ажиллуулах хуучин арга:** `START_WINDOWS.bat` нь GitHub-ийн **Code → Download ZIP**-ээр авсан эх кодын багцад хэвээр байна. Энэ арга нь Python болон C compiler (GCC) шаарддаг тул хөгжүүлэгч, багш, эх кодыг шалгах хүмүүст зориулагдсан. Энгийн хэрэглэгчид `.bat` ажиллуулах шаардлагагүй. Windows-ийн эх кодыг WSL-д Linux-ийн алхмаар ажиллуулж болно.
 
 ### macOS — бэлэн APP (Apple Silicon)
 
@@ -108,7 +120,7 @@ make clean && make
 python3 server.py
 ```
 
-Хөтөч дээр `http://127.0.0.1:8765/dashboard.html` нээнэ. Ubuntu/Debian-д эхлээд `sudo apt install build-essential python3` хэрэгтэй байж болно.
+Хөтөч дээр `http://127.0.0.1:8765/dashboard.html` нээнэ. Порт завгүй бол `SUDOKU_PORT=8876 python3 server.py` гэж эхлүүлээд терминалд хэвлэсэн хаягийг нээнэ. Ubuntu/Debian-д эхлээд `sudo apt install build-essential python3` хэрэгтэй байж болно.
 
 ### Тест
 
@@ -133,16 +145,14 @@ Windows, macOS, Linux-ийн CI шалгалтыг [GitHub Actions](https://gith
 - **Сургалтын симуляц:** `ui/sudoku_threads.html` дахь CPU core, ready queue, Gantt болон tick-ийн дүрслэл нь thread scheduling-ийн **загварчилсан** тайлбар бөгөөд бодит үйлдлийн системийн scheduler trace эсвэл C thread-үүдийн хэмжсэн хугацаа биш.
 - **Хугацааны хэмжилт:** Бодит benchmark-ийн тоонуудыг C engine-ээс авна; симуляцын tick-тэй харьцуулж бодит хэмжилт гэж үзэхгүй.
 
-**Repository бүтэц:** `src/sudoku_validator.c` нь root дахь `sudoku_validator.c`-ийн ижил агуулгатай хуулбар. Одоогийн build, CI, Windows/macOS багцууд root дахь файлыг ашигласан хэвээр тул ажиллаж буй замуудыг өөрчлөөгүй. Код өөрчлөхдөө хоёр файлыг ижил байлгах шаардлагатай; бүрэн шилжүүлэлт хийгдээгүй.
-
-**Баримт бичиг:** [Төслийн тайлан](docs/Report.pdf) (`docs/Report.pdf`, 1,665,674 байт) репод байна. [Хэрэглэгчийн бүрэн заавар](docs/USER_GUIDE.md) нь GitHub дээр шууд уншигдана. [PDF гарын авлага](docs/Manual.pdf) (`docs/Manual.pdf`, 325,368 байт) репод нэмэгдсэн. PDF-ийн агуулгыг шинэ кодтой тулгаж гар ажиллагаагаар шалгана. `docs/REPORT_AI_UI_NOTES.md` нь нэмэлт тэмдэглэл.
+**Баримт бичиг:** [Төслийн тайлан](docs/Report.pdf), [PDF гарын авлага](docs/Manual.pdf), [вэб гарын авлага](docs/USER_GUIDE.md).
 
 ## Хувилбар ба баталгаажуулалт
 
 - **Хуучин хувилбар:** `v1.0.0` нь CLI оролтын болон benchmark exit-code-ийн засвараас өмнөх код тул эцсийн хувилбар биш.
 - **Нийтэлсэн тогтмол хувилбар:** [`v1.2.0`](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/v1.2.0) нь `344bc35` commit дээр үүссэн бөгөөд Windows `SudokuValidation_Windows_Ready.zip` asset-тай. Энэ tag нь дараагийн `main` засваруудыг **агуулахгүй**.
 - **Хамгийн сүүлийн код:** `main` branch болон [GitHub Actions](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/actions)-ийн тухайн commit дээрх шалгалтыг харна. Build artifact, Release binary болон source commit-ийг ижил гэж таамаглахгүй.
-- **UI оношилгоо:** C/Pthreads нь зөв/буруу болон worker `valid[]` үр дүнг тогтооно. Python `server.py` нь `badCells` болон `issues`-ийг тооцоолж JSON-д буцаана. Dashboard серверийн `issues`-ийг харуулдаг; C-ийн дотоод `worker_report.issues` шууд JSON болоогүй.
+- **UI оношилгоо:** C хөдөлгүүрийн `-j` горим нь worker-ийн дүн, `badCells`, `issues`, хугацааг JSON-аар өгнө. Python гүүр тайлбарыг хэлбэржүүлж Dashboard-д дамжуулна.
 - **Sanitizer:** Linux-ийн зарим kernel дээр TSan `unexpected memory mapping` алдаатай байж болно. Үүнийг PASS гэж тооцохгүй; үндсэн тест, ASan/UBSan болон TSan-ийг тусад нь шалгана.
 - **Гар ажиллагааны тест:** CI-ийн амжилт нь Windows/macOS GUI-г бодит төхөөрөмж дээр ажиллуулсныг орлохгүй.
 
@@ -150,8 +160,6 @@ Windows, macOS, Linux-ийн CI шалгалтыг [GitHub Actions](https://gith
 ## Харилцан шүүмжийн дараах нэмэлт шалгалт
 
 - `tests/test_review_regression.py` нь 1/11/27 горимд зөв, давхардсан болон хоосон нүдтэй самбарын API үр дүн, worker тоо, алдааны тэмдэглэгээг шалгана. C хөдөлгүүрийн системийн алдааг Sudoku-ийн буруу шийдэл гэж андуурахгүй эсэх, worker-ийн тооны зөрүү, буруу JSON утгуудыг мөн шалгана.
-- `src/sudoku_validator.c` ба root `sudoku_validator.c` одоогоор ижил агуулгатай compatibility хуулбарууд. Автомат тест тэдгээрийн байт бүрийг харьцуулна. Root файлыг үндсэн build ашигладаг учраас хуулбарыг шууд устгаагүй; цаашид нэг файлд бүрэн шилжүүлэхдээ бүх build, documentation, release script-ийг зэрэг өөрчилнө.
-- Dashboard-ын `badCells` болон `issues` нь Python bridge дээр Sudoku-ийн мөр, багана, 3×3 бүсээс дахин тооцсон **тайлбарлах мэдээлэл** юм. Шийдэл зөв/буруу эсэх болон worker `valid[]`-ийн **үндсэн эх сурвалж нь C/Pthreads** хэвээр. C-ийн `worker_report.issues` шууд JSON болгож дамжуулах шинэ протокол одоогоор хэрэгжээгүй; тийм гэж тайлбарлахгүй.
 - Benchmark-ийн хугацааны харьцааг CLI-тэй адил `олон урсгалын хугацаа / 1 урсгалын хугацаа` гэж тооцно: `1×`-ээс их нь удаан, бага нь хурдан. Энэ нь speedup биш, хугацааны коэффициент юм.
 - Dashboard-ын **Бүх горимыг харьцуулах** нь горим тус бүрийг нэг удаа ажиллуулдаг. **Benchmark** нь горим бүрийн олон давталтын медианыг ашигладаг; нэг удаагийн хэмжилтийг найдвартай performance ranking гэж үзэхгүй. Thread үүсгэх/хүлээх overhead 9×9 жижиг оролтод өндөр байж болно.
 - `make test` нь sanitizer-уудыг заавал ажиллуулах Linux/тохирох compiler орчинд зориулагдсан. TSan runtime/kernel нийцэхгүй үед гарсан алдааг жинхэнэ data race гэж шууд дүгнэхгүй, гэхдээ амжилттай шалгалт гэж мөн тооцохгүй. CI дахь sanitizer job-ийн бодит үр дүнг тусад нь харна.

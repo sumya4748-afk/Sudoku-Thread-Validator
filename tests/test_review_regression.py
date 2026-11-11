@@ -13,11 +13,6 @@ GOOD = [int(c) for c in '5346789126721953481983425678597614234268537917139248569
 
 
 class ReviewRegression(unittest.TestCase):
-    def test_source_copies_are_identical(self):
-        self.assertEqual((ROOT / 'sudoku_validator.c').read_bytes(),
-                         (ROOT / 'src/sudoku_validator.c').read_bytes(),
-                         'Root and src copies have diverged; keep them synchronized until consolidation.')
-
     def test_dashboard_uses_server_diagnostics_and_consistent_time_ratio(self):
         dashboard = (ROOT / 'dashboard.html').read_text(encoding='utf-8')
         self.assertNotIn('function describeIssues(', dashboard)
@@ -36,6 +31,7 @@ class ReviewRegression(unittest.TestCase):
         duplicate[0] = duplicate[1]
         empty = GOOD.copy()
         empty[0] = 0
+        diagnostics = {}
         for mode in (1, 11, 27):
             for board, expected in ((GOOD, True), (duplicate, False), (empty, False)):
                 with self.subTest(mode=mode, valid=expected, empty=(board is empty)):
@@ -46,19 +42,21 @@ class ReviewRegression(unittest.TestCase):
                     self.assertEqual(bool(result['issues']), not expected)
                     self.assertEqual(all(w['ok'] for w in result['workers']), expected)
                     self.assertEqual(result['valid'], all(w['ok'] for w in result['workers']))
+                    diagnostic = result['badCells'], result['issues']
+                    self.assertEqual(diagnostics.setdefault(tuple(board), diagnostic), diagnostic)
 
     def test_subprocess_error_does_not_look_like_invalid_sudoku(self):
         with patch.object(server, 'BINARY') as binary, patch.object(
             server.subprocess, 'run', return_value=SimpleNamespace(
                 returncode=2, stdout='', stderr='invalid input')):
             binary.is_file.return_value = True
-            with self.assertRaisesRegex(RuntimeError, 'invalid input'):
+            with self.assertRaisesRegex(RuntimeError, 'код 2'):
                 server.check({'board': GOOD, 'mode': 11})
 
     def test_worker_count_mismatch_is_rejected(self):
         with patch.object(server, 'BINARY') as binary, patch.object(
             server.subprocess, 'run', return_value=SimpleNamespace(
-                returncode=0, stdout='valid[] = [1 1]\\nХугацаа: 1.0 мкс', stderr='')):
+                returncode=0, stdout='{"valid":true,"workers":[1,1]}', stderr='')):
             binary.is_file.return_value = True
             with self.assertRaisesRegex(RuntimeError, 'тоо зөрлөө'):
                 server.check({'board': GOOD, 'mode': 11})

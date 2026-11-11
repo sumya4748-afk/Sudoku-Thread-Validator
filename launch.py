@@ -2,12 +2,18 @@
 """One-click local launcher: compile if necessary, start server, open browser."""
 import os, sys, shutil, subprocess, time, webbrowser, socket
 from pathlib import Path
+from server import HOST, configured_port, dashboard_url
 ROOT = Path(__file__).resolve().parent
-URL = 'http://127.0.0.1:8765/dashboard.html'
 EXE = ROOT / ('sudoku_validator.exe' if os.name == 'nt' else 'sudoku_validator')
 SRC = ROOT / 'sudoku_validator.c'
 
 def main():
+    try:
+        port = configured_port()
+    except ValueError as exc:
+        print(exc, file=sys.stderr)
+        return 2
+    url = dashboard_url(port)
     if not EXE.exists() or EXE.stat().st_mtime < SRC.stat().st_mtime:
         gcc = shutil.which('gcc') or shutil.which('clang')
         if not gcc and os.name == 'nt':
@@ -21,8 +27,8 @@ def main():
         result = subprocess.run(cmd, cwd=ROOT)
         if result.returncode: return result.returncode
     try:
-        with socket.create_connection(('127.0.0.1',8765),timeout=0.4):
-            print('Port 8765 is already in use. Close the old server before launching.')
+        with socket.create_connection((HOST, port),timeout=0.4):
+            print(f'{port} порт завгүй байна. Өмнөх серверийг хаах эсвэл SUDOKU_PORT тохируулна уу.')
             return 2
     except OSError: pass
     server = subprocess.Popen([sys.executable, str(ROOT/'server.py')], cwd=ROOT)
@@ -32,9 +38,9 @@ def main():
                 print('Server exited unexpectedly.')
                 return 3
             try:
-                with socket.create_connection(('127.0.0.1',8765),timeout=0.25):
-                    webbrowser.open(URL)
-                    print('Dashboard:', URL)
+                with socket.create_connection((HOST, port),timeout=0.25):
+                    webbrowser.open(url)
+                    print('Dashboard:', url)
                     print('Keep this launcher open while using the dashboard.')
                     print('Press Ctrl+C to stop.')
                     return server.wait()

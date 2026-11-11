@@ -427,6 +427,35 @@ static void mark_bad_cells(int bad[N][N], int n_workers) {
         }
 }
 
+/* The HTTP bridge consumes these numeric fields independently of CLI translations. */
+static void print_json(int ok, int n_workers, double us) {
+    int bad[N][N] = {{0}};
+    mark_bad_cells(bad, n_workers);
+    printf("{\"valid\":%s,\"workers\":[", ok ? "true" : "false");
+    for (int w = 0; w < n_workers; w++)
+        printf("%s%d", w ? "," : "", valid[w]);
+    printf("],\"badCells\":[");
+    const char *separator = "";
+    for (int r = 0; r < N; r++) {
+        for (int c = 0; c < N; c++) {
+            if (!bad[r][c]) continue;
+            printf("%s%d", separator, r * N + c);
+            separator = ",";
+        }
+    }
+    printf("],\"issues\":[");
+    separator = "";
+    for (int w = 0; w < n_workers; w++) {
+        for (int i = 0; i < reports[w].n_issues; i++) {
+            const issue *item = &reports[w].issues[i];
+            printf("%s[%d,%d,%d,%d,%d,%d]", separator, item->region,
+                   item->region_no, item->kind, item->digit, item->r, item->c);
+            separator = ",";
+        }
+    }
+    printf("],\"microseconds\":%.1f}\n", us);
+}
+
 static void print_grid(int bad[N][N]) {
     for (int r = 0; r < N; r++) {
         if (r % 3 == 0) printf("  +-------+-------+-------+\n");
@@ -501,6 +530,7 @@ static void usage(const char *prog) {
         "  -s R,C,V  [R,C] нүдийг V болгох (1-ээс тоолно, давтаж болно)\n"
         "  -t MODE   thread-ийн стратеги: 11 (анхдагч), 27, 1\n"
         "  -b REPS   1 / 11 / 27 горимыг REPS (1-1000000) удаа ажиллуулж хугацаа харьцуулах\n"
+        "  -j        JSON үр дүн хэвлэх (HTTP гүүр)\n"
         "  -v        thread бүрийн үүсгэлт, эхлэл, төгсгөлийг хэвлэх\n"
         "  -q        зөвхөн эцсийн дүнг хэвлэх\n"
         "  -h        энэ тусламж\n"
@@ -514,9 +544,9 @@ int main(int argc, char *argv[]) {
     long long seed = -1, num;
     int errors = 0, mode = 11, bench = 0;
     int sets[N * N][3], n_sets = 0;
-    int opt;
+    int opt, json_output = 0;
 
-    while ((opt = getopt(argc, argv, "f:g:e:s:t:b:vqh")) != -1) {
+    while ((opt = getopt(argc, argv, "f:g:e:s:t:b:vqjh")) != -1) {
         switch (opt) {
         case 'f':
             if (file) { fprintf(stderr, "-f нэг л удаа өгөгдөнө\n"); return 2; }
@@ -559,9 +589,17 @@ int main(int argc, char *argv[]) {
         case 'b': if (parse_num("b", optarg, 1, 1000000, &num)) return 2; bench = (int)num; break;
         case 'v': verbose = 1; break;
         case 'q': quiet = 1; break;
+        case 'j': json_output = 1; break;
         case 'h': usage(argv[0]); return 0;
         default: usage(argv[0]); return 2;
         }
+    }
+    if (json_output) {
+        if (bench || verbose) {
+            fprintf(stderr, "-j горимыг -b эсвэл -v-тэй хамт хэрэглэхгүй.\n");
+            return 2;
+        }
+        quiet = 1;
     }
     if (optind < argc) { fprintf(stderr, "Ойлгомжгүй аргумент: '%s' (тусламж: -h)\n", argv[optind]); return 2; }
     if (file && seed >= 0) { fprintf(stderr, "-f болон -g хамт хэрэглэх боломжгүй (оролтын эх хоёр байна)\n"); return 2; }
@@ -632,6 +670,10 @@ int main(int argc, char *argv[]) {
     int n_workers;
     double us;
     int ok = run_validation(mode, &n_workers, &us);
+    if (json_output) {
+        print_json(ok, n_workers, us);
+        return ok ? 0 : 1;
+    }
 
     if (!quiet) {
         print_results(n_workers);

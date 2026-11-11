@@ -18,10 +18,13 @@ asan: sudoku_validator_asan
 
 sanitizers: sudoku_validator_tsan sudoku_validator_asan
 
+test-core: all
+	SANITIZERS= bash ./run_tests.sh
+
 test: all sanitizers
 	REQUIRE_SANITIZERS=1 bash ./run_tests.sh
 
 clean:
 	rm -f sudoku_validator sudoku_validator_tsan sudoku_validator_asan
 
-.PHONY: all tsan asan sanitizers test clean
+.PHONY: all tsan asan sanitizers test-core test clean

@@ -8,6 +8,6 @@ if not errorlevel 1 (
 )
 if errorlevel 1 (
  echo.
- echo Check START_HERE.md for setup instructions.
+ echo Check README.md for setup instructions.
  pause
 )
