@@ -545,6 +545,12 @@ static void usage(const char *prog) {
         prog);
 }
 
+static int compare_times(const void *left, const void *right) {
+    double a = *(const double *)left;
+    double b = *(const double *)right;
+    return (a > b) - (a < b);
+}
+
 int main(int argc, char *argv[]) {
     const char *file = NULL;
     long long seed = -1, num;
@@ -641,30 +647,37 @@ int main(int argc, char *argv[]) {
 
     /* --- Хурдны харьцуулалт --- */
     if (bench > 0) {
-        int saved_verbose = verbose;
+        double *samples = malloc((size_t)bench * sizeof *samples);
+        if (!samples) {
+            fprintf(stderr, "Benchmark хэмжилтэд санах ой хүрэлцэхгүй байна.\n");
+            return 2;
+        }
         verbose = 0;
         int modes[3] = {1, 11, 27};
         double base_avg = 0;
         int all_modes_valid = 1;
         printf("Хурдны харьцуулалт: %d давталт, оролт: %s\n", bench, source);
-        printf("  Горим   Thread  Дундаж(мкс)  Хамгийн бага  Хамгийн их  Харьцаа  Дүн\n");
+        printf("  Горим   Thread  Дундаж(мкс)  Хамгийн бага  Хамгийн их  Харьцаа  Медиан(мкс)  Дүн\n");
         for (int m = 0; m < 3; m++) {
             double sum = 0, mn = 1e18, mx = 0, us;
             int nw = 0, res = 0;
             for (int k = 0; k < bench; k++) {
                 res = run_validation(modes[m], &nw, &us);
+                samples[k] = us;
                 sum += us;
                 if (us < mn) mn = us;
                 if (us > mx) mx = us;
             }
             if (!res) all_modes_valid = 0;
             double avg = sum / bench;
+            qsort(samples, (size_t)bench, sizeof *samples, compare_times);
+            double median = (samples[(bench - 1) / 2] + samples[bench / 2]) / 2.0;
             if (m == 0) base_avg = avg;
-            printf("  -t %-4d %-6d  %11.2f  %12.2f  %10.2f  %6.2fx  %s\n", modes[m], nw, avg, mn, mx,
-                   avg / base_avg, res ? "ЗӨВ" : "БУРУУ");
+            printf("  -t %-4d %-6d  %11.2f  %12.2f  %10.2f  %6.2fx  %11.2f  %s\n",
+                   modes[m], nw, avg, mn, mx, avg / base_avg, median, res ? "ЗӨВ" : "БУРУУ");
         }
         printf("  (Харьцаа = тухайн горимын дундаж хугацаа / 1-thread горимын дундаж хугацаа)\n");
-        verbose = saved_verbose;
+        free(samples);
         return all_modes_valid ? 0 : 1;
     }
 

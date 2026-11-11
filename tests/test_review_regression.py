@@ -28,6 +28,23 @@ class ReviewRegression(unittest.TestCase):
         self.assertIn('free(data);\n            for (int j = 0; j < i; j++)', source)
         self.assertIn('int joined = pthread_join(tids[j], NULL);', source)
 
+    def test_cli_benchmark_reports_median(self):
+        for repetitions in (1, 2, 3):
+            with self.subTest(repetitions=repetitions):
+                run = subprocess.run([str(server.BINARY), '-b', str(repetitions)],
+                                     encoding='utf-8', capture_output=True, check=True)
+                self.assertIn('Медиан(мкс)', run.stdout)
+                rows = [line.split() for line in run.stdout.splitlines()
+                        if line.lstrip().startswith('-t ')]
+                self.assertEqual([int(row[1]) for row in rows], [1, 11, 27])
+                for row in rows:
+                    mean, minimum, maximum = map(float, row[3:6])
+                    median = float(row[7])
+                    self.assertLessEqual(minimum, median)
+                    self.assertLessEqual(median, maximum)
+                    if repetitions <= 2:
+                        self.assertEqual(median, mean)
+
     def test_engine_reports_all_empty_board_issues(self):
         for mode in (1, 11, 27):
             with self.subTest(mode=mode):
