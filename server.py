@@ -25,50 +25,50 @@ def check(payload):
     if not BINARY.is_file():
         raise FileNotFoundError('C хөдөлгүүр хөрвүүлэгдээгүй байна. macOS/Linux дээр make, Windows дээр build_windows.bat ажиллуулна уу.')
     grid_text = '\n'.join(''.join(str(x) for x in board[r*9:(r+1)*9]) for r in range(9)) + '\n'
-    run = subprocess.run([str(BINARY), '-f', '-', '-t', str(mode)], input=grid_text,
+    run = subprocess.run([str(BINARY), '-f', '-', '-t', str(mode), '-j'], input=grid_text,
                          encoding='utf-8', errors='replace', capture_output=True,
                          timeout=8, cwd=ROOT)
     output = run.stdout or ''
     error_output = run.stderr or ''
     if run.returncode not in (0, 1):
-        raise RuntimeError(error_output.strip() or output.strip() or f'C engine exited with code {run.returncode}')
-    match = VALID.search(output)
-    if not match:
-        raise RuntimeError('C engine produced no valid[] output. ' + (error_output.strip() or output[-400:] or 'No output received.'))
-    flags = [int(v) for v in match.group(1).split()]
-    if len(flags) != mode:
+        raise RuntimeError(error_output.strip() or output.strip() or f'C хөдөлгүүр {run.returncode} кодтой дууслаа')
+    try:
+        engine = json.loads(output)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError('C хөдөлгүүрийн JSON гаралт буруу байна.') from exc
+    flags = engine.get('flags')
+    if not isinstance(flags, list) or len(flags) != mode or any(v not in (0, 1) for v in flags):
         raise RuntimeError('Worker-ийн үр дүнгийн тоо зөрлөө.')
-    elapsed = TIME.search(output)
-    # Diagnostics mirror the C check_region/mark_bad_cells semantics.
-    # C remains the authority for the verdict and per-worker status.
-    bad = set()
+    if engine.get('valid') is not (run.returncode == 0):
+        raise RuntimeError('C хөдөлгүүрийн төлөв ба гаралтын код зөрлөө.')
+    bad = engine.get('badCells')
+    raw_issues = engine.get('issues')
+    if not isinstance(bad, list) or not isinstance(raw_issues, list):
+        raise RuntimeError('C хөдөлгүүрийн оношлогоо дутуу байна.')
+    region_names = ('Мөр', 'Багана', '3×3 хэсэг')
     issues = []
-    for kind, title in (('row', 'Мөр'), ('col', 'Багана'), ('box', '3×3 хэсэг')):
-        for region in range(9):
-            coords = ([(region, c) for c in range(9)] if kind == 'row' else
-                      [(r, region) for r in range(9)] if kind == 'col' else
-                      [(region//3*3+r, region%3*3+c) for r in range(3) for c in range(3)])
-            seen = {}
-            for r, c in coords:
-                v = board[r*9+c]
-                if v == 0:
-                    bad.add(r*9+c)
-                    issues.append(f'{title} {region+1}: нүд [{r+1},{c+1}] хоосон')
-                elif v in seen:
-                    # The C code highlights *all* occurrences of a duplicated digit.
-                    bad.update(rr*9+cc for rr, cc in coords if board[rr*9+cc] == v)
-                    issues.append(f'{title} {region+1}: {v} давхардсан (нүд [{r+1},{c+1}])')
-                else:
-                    seen[v] = (r, c)
-            for digit in range(1, 10):
-                if digit not in seen:
-                    issues.append(f'{title} {region+1}: {digit} цифр дутуу')
+    for item in raw_issues:
+        if not isinstance(item, dict) or item.get('region') not in (0, 1, 2) or item.get('kind') not in (0, 1, 2):
+            raise RuntimeError('C хөдөлгүүрийн оношлогооны бүтэц буруу байна.')
+        title = f"{region_names[item['region']]} {item['regionNo']+1}"
+        if item['kind'] == 0:
+            issues.append(f"{title}: {item['digit']} давхардсан (нүд [{item['row']+1},{item['col']+1}])")
+        elif item['kind'] == 1:
+            issues.append(f"{title}: нүд [{item['row']+1},{item['col']+1}] хоосон")
+        else:
+            issues.append(f"{title}: {item['digit']} цифр дутуу")
     labels = (['Бүх 27 бүс'] if mode == 1 else
               ['Бүх мөр', 'Бүх багана'] + [f'3×3 хэсэг {i+1}' for i in range(9)] if mode == 11 else
               [f'Мөр {i+1}' for i in range(9)] + [f'Багана {i+1}' for i in range(9)] + [f'3×3 хэсэг {i+1}' for i in range(9)])
     return {'valid': run.returncode == 0, 'mode': mode, 'workers': [{'label': name, 'ok': bool(ok)} for name, ok in zip(labels, flags)],
-            'badCells': sorted(bad), 'issues': issues, 'microseconds': float(elapsed.group(1)) if elapsed else None,
+            'badCells': bad, 'issues': issues, 'microseconds': engine.get('microseconds'),
             'engine': 'C11 + POSIX pthreads', 'note': 'Хугацаа нь бодит C thread-ийн хэмжилт; сургалтын симуляцын tick биш.'}
+
+class LocalHTTPServer(ThreadingHTTPServer):
+    # Accept a burst of local connections; validation concurrency remains capped.
+    request_queue_size = 128
+    daemon_threads = True
+
 
 class Handler(SimpleHTTPRequestHandler):
     # Explicit UTF-8 for browser HTML pages containing Mongolian text.
@@ -167,7 +167,7 @@ if __name__ == '__main__':
     host, port = '127.0.0.1', 8765
     print(f'Бодит Pthreads интерфэйс: http://{host}:{port}/dashboard.html', flush=True)
     try:
-        ThreadingHTTPServer((host, port), Handler).serve_forever()
+        LocalHTTPServer((host, port), Handler).serve_forever()
     except KeyboardInterrupt:
         print('\nСервер зогслоо.')
     except OSError as exc:

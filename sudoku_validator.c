@@ -68,6 +68,7 @@ static int valid[MAX_WORKERS];           /* i-р worker зөвхөн valid[i]-д
 static worker_report reports[MAX_WORKERS]; /* i-р worker зөвхөн reports[i]-д бичнэ */
 static int verbose = 0;
 static int quiet = 0;
+static int json_output = 0;
 static int use_color = 0;
 
 /* Сурах бичгийн Figure 4.26 дахь зөв шийдэл (анхдагч оролт) */
@@ -237,7 +238,11 @@ static int run_validation(int mode, int *n_workers, double *elapsed_us) {
 
     for (int i = 0; i < n; i++) {
         parameters *data = (parameters *)malloc(sizeof(parameters));
-        if (!data) { perror("malloc"); exit(2); }
+        if (!data) {
+            perror("malloc");
+            for (int j = 0; j < i; j++) { pthread_join(tids[j], NULL); free(params[j]); }
+            exit(2);
+        }
         data->row = plan[i].row;
         data->column = plan[i].column;
         data->count = plan[i].count;
@@ -250,6 +255,8 @@ static int run_validation(int mode, int *n_workers, double *elapsed_us) {
         int rc = pthread_create(&tids[i], NULL, plan[i].fn, data);
         if (rc != 0) {
             fprintf(stderr, "pthread_create алдаа (#%d): %s\n", i, strerror(rc));
+            free(data);
+            for (int j = 0; j < i; j++) { pthread_join(tids[j], NULL); free(params[j]); }
             exit(2);
         }
     }
@@ -415,6 +422,23 @@ static void mark_bad_cells(int bad[N][N], int n_workers) {
         }
 }
 
+static void print_json(int n, int ok, double us) {
+    int bad[N][N] = {{0}};
+    mark_bad_cells(bad, n);
+    printf("{\"valid\":%s,\"mode\":%d,\"microseconds\":%.3f,\"flags\":[", ok ? "true" : "false", n, us);
+    for (int i=0;i<n;i++) printf("%s%d",i?",":"",valid[i]);
+    printf("],\"badCells\":[");
+    int first=1;
+    for(int r=0;r<N;r++) for(int c=0;c<N;c++) if(bad[r][c]) {printf("%s%d",first?"":",",r*N+c);first=0;}
+    printf("],\"issues\":["); first=1;
+    for(int w=0;w<n;w++) for(int k=0;k<reports[w].n_issues;k++) {
+        issue *is=&reports[w].issues[k];
+        printf("%s{\"region\":%d,\"regionNo\":%d,\"kind\":%d,\"digit\":%d,\"row\":%d,\"col\":%d}",first?"":",",is->region,is->region_no,is->kind,is->digit,is->r,is->c);
+        first=0;
+    }
+    printf("]}\n");
+}
+
 static void print_grid(int bad[N][N]) {
     for (int r = 0; r < N; r++) {
         if (r % 3 == 0) printf("  +-------+-------+-------+\n");
@@ -504,7 +528,7 @@ int main(int argc, char *argv[]) {
     int sets[N * N][3], n_sets = 0;
     int opt;
 
-    while ((opt = getopt(argc, argv, "f:g:e:s:t:b:vqh")) != -1) {
+    while ((opt = getopt(argc, argv, "f:g:e:s:t:b:vqjh")) != -1) {
         switch (opt) {
         case 'f':
             if (file) { fprintf(stderr, "-f нэг л удаа өгөгдөнө\n"); return 2; }
@@ -547,6 +571,7 @@ int main(int argc, char *argv[]) {
         case 'b': if (parse_num("b", optarg, 1, 1000000, &num)) return 2; bench = (int)num; break;
         case 'v': verbose = 1; break;
         case 'q': quiet = 1; break;
+        case 'j': json_output = 1; quiet = 1; break;
         case 'h': usage(argv[0]); return 0;
         default: usage(argv[0]); return 2;
         }
@@ -584,6 +609,7 @@ int main(int argc, char *argv[]) {
 
     /* --- Хурдны харьцуулалт --- */
     if (bench > 0) {
+        if (json_output) { fprintf(stderr, "-j ба -b хамт хэрэглэхгүй\\n"); return 2; }
         int saved_verbose = verbose;
         verbose = 0;
         int modes[3] = {1, 11, 27};
@@ -621,6 +647,7 @@ int main(int argc, char *argv[]) {
     double us;
     int ok = run_validation(mode, &n_workers, &us);
 
+    if (json_output) { print_json(n_workers, ok, us); return ok ? 0 : 1; }
     if (!quiet) {
         print_results(n_workers);
         if (!ok) {
