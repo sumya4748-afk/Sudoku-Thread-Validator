@@ -91,9 +91,9 @@ ready queue-ийн дараалал зэрэг параметрээр thread-и�
 
 ### Windows — бэлэн EXE
 
-**Windows-д ашиглах нэг арга (хөдөлгөөнт `windows-latest` багц; тогтмол хувилбар биш):** [Windows ZIP-ийг шууд татах](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/download/v1.2.0/SudokuValidation_Windows_Ready.zip) (эсвэл [Releases хуудас](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/v1.2.0)). `SudokuValidation_Windows_Ready.zip`-ийг татаж, **Extract All** хийж бүрэн задлаад, доторх `SudokuValidation.exe`-г ажиллуулна. ZIP дотроос нь шууд HTML нээхгүй. Python болон GCC суулгах шаардлагагүй. Windows SmartScreen анхааруулга өгч болзошгүй; зөвхөн итгэлтэй эх сурвалжаас татсан файлыг ажиллуулна.
+**Windows-д ашиглах үндсэн арга (`v1.2.0` тогтмол Release):** [Windows ZIP-ийг шууд татах](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/download/v1.2.0/SudokuValidation_Windows_Ready.zip) (эсвэл [Releases хуудас](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/v1.2.0)). `SudokuValidation_Windows_Ready.zip`-ийг татаж, **Extract All** хийж бүрэн задлаад, доторх `SudokuValidation.exe`-г ажиллуулна. ZIP дотроос нь шууд HTML нээхгүй. Python болон GCC суулгах шаардлагагүй. Windows SmartScreen анхааруулга өгч болзошгүй; зөвхөн итгэлтэй эх сурвалжаас татсан файлыг ажиллуулна.
 
-**Эх кодоос ажиллуулах хуучин арга:** `START_WINDOWS.bat` нь GitHub-ийн **Code → Download ZIP**-ээр авсан эх кодын багцад хэвээр байна. Энэ арга нь Python болон C compiler (GCC) шаарддаг тул хөгжүүлэгч, багш, эх кодыг шалгах хүмүүст зориулагдсан. Энгийн хэрэглэгчид `.bat` ажиллуулах шаардлагагүй. `windows-release.yml` нь Windows EXE-г автоматаар build хийж шалгаад, `windows-latest` Release-д ZIP-г нийтэлдэг тохиргоо; хэрэглэгчид энэ YAML файлыг татахгүй.
+**Эх кодоос ажиллуулах хуучин арга:** `START_WINDOWS.bat` нь GitHub-ийн **Code → Download ZIP**-ээр авсан эх кодын багцад хэвээр байна. Энэ арга нь Python болон C compiler (GCC) шаарддаг тул хөгжүүлэгч, багш, эх кодыг шалгах хүмүүст зориулагдсан. Энгийн хэрэглэгчид `.bat` ажиллуулах шаардлагагүй. `windows-release.yml` нь Windows EXE-г автоматаар build хийж шалгадаг; тогтмол `v1.2.0` ZIP нь Release-ийн Assets хэсэгт тусад нь нийтлэгдсэн; хэрэглэгчид энэ YAML файлыг татахгүй.
 
 ### macOS — бэлэн APP (Apple Silicon)
 
