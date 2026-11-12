@@ -87,14 +87,21 @@ class Handler(SimpleHTTPRequestHandler):
         port = self.server.server_port
         return (f'127.0.0.1:{port}', f'localhost:{port}')
 
-    def _route(self):
-        return urlsplit(self.path).path
+    def parse_request(self):
+        if not super().parse_request():
+            return False
+        try:
+            self.route = urlsplit(self.path).path
+        except ValueError:
+            self.send_error(400)
+            return False
+        return True
 
     def do_GET(self):
         if not self._allowed_host():
             self.send_error(403)
             return
-        path = self._route()
+        path = self.route
         if path == '/':
             self.send_response(302)
             self.send_header('Location', '/dashboard.html')
@@ -110,7 +117,7 @@ class Handler(SimpleHTTPRequestHandler):
         if not self._allowed_host():
             self.send_error(403)
             return
-        path = self._route()
+        path = self.route
         if path not in PUBLIC_FILES:
             self.send_error(404)
             return
@@ -131,7 +138,7 @@ class Handler(SimpleHTTPRequestHandler):
         if not self._allowed_host() or not self._allowed_origin():
             self.send_error(403)
             return
-        if self._route() != '/api/validate':
+        if self.route != '/api/validate':
             self.send_error(404)
             return
         if self.headers.get('Content-Type', '').split(';')[0].strip().lower() != 'application/json':
