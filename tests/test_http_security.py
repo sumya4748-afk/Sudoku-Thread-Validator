@@ -1,6 +1,7 @@
 """Regression tests for local-only HTTP server access controls."""
 import http.client
 import json
+import socket
 import threading
 import unittest
 from http.server import ThreadingHTTPServer
@@ -50,6 +51,18 @@ class HTTPTests(unittest.TestCase):
         self.assertEqual(status, 400)
         self.assertEqual(self.request('POST', '/api/validate', '{}',
                          {'Content-Type': 'application/json', 'Origin': 'http://evil.test'})[0], 403)
+
+    def test_malformed_request_url_returns_bad_request(self):
+        port = self.server.server_port
+        for method in ('GET', 'HEAD', 'POST'):
+            with self.subTest(method=method):
+                with socket.create_connection(('127.0.0.1', port), timeout=4) as conn:
+                    request = f'{method} http://[/dashboard.html HTTP/1.0\r\nHost: localhost:{port}\r\n\r\n'
+                    conn.sendall(request.encode('ascii'))
+                    response = http.client.HTTPResponse(conn, method=method)
+                    response.begin()
+                    self.assertEqual(response.status, 400)
+                    response.close()
 
     def test_bad_payload_and_content_type(self):
         for payload in ('[]', 'null', '123', '{}', '{', b'\xff'):
