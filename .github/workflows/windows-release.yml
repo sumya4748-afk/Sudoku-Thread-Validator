@@ -19,6 +19,7 @@ on:
       - '.github/workflows/windows-release.yml'
 permissions:
   contents: write
+  actions: read
 jobs:
   windows:
     runs-on: windows-latest
@@ -34,7 +35,9 @@ jobs:
           install: mingw-w64-ucrt-x86_64-gcc
       - name: Compile C engine
         shell: msys2 {0}
-        run: gcc -std=c11 -O2 -Wall -Wextra -pthread sudoku_validator.c -o sudoku_validator.exe
+        run: |
+          gcc -std=c11 -O2 -Wall -Wextra -pthread sudoku_validator.c -o sudoku_validator.exe
+          gcc --version > compiler-version.txt
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -47,6 +50,16 @@ jobs:
           python -m pip install pyinstaller
           pyinstaller --noconfirm --clean --onedir --console --name SudokuValidation --add-data "dashboard.html;." --add-binary "sudoku_validator.exe;." --add-data "server.py;." --add-data "ui;ui" --hidden-import server launch_standalone.py
           Copy-Item README.md dist/SudokuValidation/README.md
+          New-Item -ItemType Directory -Force dist/SudokuValidation/docs | Out-Null
+          Copy-Item docs/IV-2-5_*.pdf dist/SudokuValidation/docs/
+          Copy-Item docs/USER_GUIDE.md dist/SudokuValidation/docs/
+          Copy-Item docs/images dist/SudokuValidation/docs/images -Recurse
+          @(
+            "Source commit: ${{ github.sha }}"
+            (python --version)
+            (python -m PyInstaller --version)
+            (Get-Content compiler-version.txt | Select-Object -First 1)
+          ) | Set-Content -Encoding utf8 dist/SudokuValidation/BUILD_INFO.txt
           Compress-Archive -Path dist/SudokuValidation -DestinationPath SudokuValidation_Windows_Ready.zip
       - name: Smoke-test packaged Windows executable
         shell: pwsh
@@ -97,7 +110,7 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_VERSION: v1.2.1
+          RELEASE_VERSION: v1.3.0-final
         run: |
           $tag = $env:RELEASE_VERSION
           $releases = gh release list --repo ${{ github.repository }} --limit 100 --json tagName
@@ -108,6 +121,21 @@ jobs:
           if ($existingTag -and ($existingTag -join "`n") -notmatch "(?m)^${{ github.sha }}\s") {
             throw "$tag already points at a different commit"
           }
-          $notes = "Built and smoke-tested from ${{ github.sha }}. Includes C worker diagnostics, CLI benchmark median, the updated user manual, and the original experiment report."
-          gh release create $tag SudokuValidation_Windows_Ready.zip docs/Manual.pdf docs/Report.pdf --repo ${{ github.repository }} --target "${{ github.sha }}" --title "$tag" --notes "$notes" --latest
+          $macRun = $null
+          for ($attempt = 0; $attempt -lt 60; $attempt++) {
+            $json = gh run list --repo ${{ github.repository }} --workflow macos-release.yml --commit "${{ github.sha }}" --event push --limit 10 --json databaseId,status,conclusion
+            if ($LASTEXITCODE -ne 0) { throw "Failed to check macOS build" }
+            $runs = @($json | ConvertFrom-Json)
+            $macRun = $runs | Where-Object { $_.status -eq "completed" -and $_.conclusion -eq "success" } | Select-Object -First 1
+            if ($macRun) { break }
+            if ($runs | Where-Object { $_.status -eq "completed" -and $_.conclusion -in @("failure", "cancelled", "timed_out") }) {
+              throw "macOS final build did not succeed"
+            }
+            Start-Sleep -Seconds 15
+          }
+          if (-not $macRun) { throw "Timed out waiting for matching macOS build" }
+          gh run download $macRun.databaseId --repo ${{ github.repository }} --name SudokuValidation_Mac_Ready --dir final-macos
+          if ($LASTEXITCODE -ne 0) { throw "Failed to download matching macOS ZIP" }
+          $notes = "Source commit: ${{ github.sha }}. Verified Windows and Apple Silicon macOS packages. Includes the final poster, report and manual. Windows and macOS ZIPs contain BUILD_INFO.txt."
+          gh release create $tag SudokuValidation_Windows_Ready.zip final-macos/SudokuValidation_Mac_Ready.zip docs/IV-2-5_Poster.pdf docs/IV-2-5_Final_Report.pdf docs/IV-2-5_Manual.pdf --repo ${{ github.repository }} --target "${{ github.sha }}" --title "$tag - Sudoku Solution Validator Final" --notes "$notes" --latest
           if ($LASTEXITCODE -ne 0) { throw "Failed to publish $tag" }
