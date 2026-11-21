@@ -71,6 +71,21 @@ jobs:
       - name: Create distributable ZIP
         run: |
           ditto -c -k --sequesterRsrc --keepParent dist/SudokuValidation.app SudokuValidation_Mac_Ready.zip
+          {
+            echo "Source commit: ${{ github.sha }}"
+            python3 --version
+            python3 -m PyInstaller --version
+            clang --version | head -1
+          } > BUILD_INFO.txt
+          python3 - <<'PYZIP'
+          import zipfile
+          from pathlib import Path
+          with zipfile.ZipFile("SudokuValidation_Mac_Ready.zip", "a", zipfile.ZIP_DEFLATED) as bundle:
+              bundle.write("BUILD_INFO.txt")
+              bundle.write("README.md")
+              for pdf in sorted(Path("docs").glob("IV-2-5_*.pdf")):
+                  bundle.write(pdf)
+          PYZIP
       - uses: actions/upload-artifact@v4
         with:
           name: SudokuValidation_Mac_Ready

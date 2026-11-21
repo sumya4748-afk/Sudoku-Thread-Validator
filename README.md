@@ -2,6 +2,22 @@
 
 9×9 судокугийн шийдэл зөв эсэхийг олон worker thread-ээр зэрэгцээ шалгана.
 
+## Quick Start
+
+[Final release v1.3.0-final](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/v1.3.0-final)
+
+- **MacBook Air M1 / Apple Silicon:** Release-ээс `SudokuValidation_Mac_Ready.zip` татаж задлаад `SudokuValidation.app` нээнэ.
+- **Windows:** `SudokuValidation_Windows_Ready.zip`-ийг Extract All хийгээд `SudokuValidation.exe` нээнэ.
+- **Эх кодоос (macOS/Linux):** `make`, дараа нь `python3 server.py`. Хөтөч дээр `http://127.0.0.1:8765/dashboard.html` нээнэ.
+
+![Windows дээр алдаатай самбар шалгасан үр дүн](docs/images/windows-invalid.png)
+
+27 урсгалаас 24 нь зөв, мөр 1, багана 1, дэд тор 1 нь буруу. Windows 10 Home 22H2, i7-4770, 16 GB RAM дээрх бодит туршилт.
+
+![Windows дээрх 10 давталтын benchmark](docs/images/windows-benchmark.png)
+
+Горим тус бүрийн 10 хэмжилтийн медиан 1061.40, 1735.55, 2845.80 мкс. Тайлан, гарын авлага, постер болон ZIP багцуудыг ижил final tag-аас татна.
+
 ## Бүтэц
 
 | Файл | Агуулга |
@@ -104,13 +120,13 @@ ready queue-ийн дараалал зэрэг параметрээр thread-и�
 
 ### Windows — бэлэн EXE
 
-**Windows-д ашиглах тогтмол хувилбар:** [v1.2.1 Windows ZIP-ийг татах](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/download/v1.2.1/SudokuValidation_Windows_Ready.zip). `SudokuValidation_Windows_Ready.zip`-ийг татаж, **Extract All** хийж бүрэн задлаад, доторх `SudokuValidation.exe`-г ажиллуулна. ZIP дотроос нь шууд HTML нээхгүй. Python болон GCC суулгах шаардлагагүй. Windows SmartScreen анхааруулга өгч болзошгүй; зөвхөн итгэлтэй эх сурвалжаас татсан файлыг ажиллуулна.
+**Windows-д ашиглах тогтмол хувилбар:** [v1.3.0-final Windows ZIP-ийг татах](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/download/v1.3.0-final/SudokuValidation_Windows_Ready.zip). `SudokuValidation_Windows_Ready.zip`-ийг татаж, **Extract All** хийж бүрэн задлаад, доторх `SudokuValidation.exe`-г ажиллуулна. ZIP дотроос нь шууд HTML нээхгүй. Python болон GCC суулгах шаардлагагүй. Windows SmartScreen анхааруулга өгч болзошгүй; зөвхөн итгэлтэй эх сурвалжаас татсан файлыг ажиллуулна.
 
 Эх кодоос Windows дээр ажиллуулахад Python 3 болон MSYS2 UCRT64 GCC шаардлагатай. Төслийн хавтсанд `START_WINDOWS.bat` ажиллуулна.
 
 ### macOS — бэлэн APP (Apple Silicon)
 
-[Build macOS Sudoku app](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/actions/workflows/macos-release.yml) workflow-ийн амжилттай run-ээс `SudokuValidation_Mac_Ready` artifact татна. ZIP-үүдийг задлаад `SudokuValidation.app` нээнэ. Apple Developer ID гарын үсэг/notarization байхгүй тул анх удаа **System Settings → Privacy & Security → Open Anyway** зөвшөөрөл шаардаж магадгүй. Intel Mac дээр шалгаагүй.
+[Final release](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/v1.3.0-final)-ээс `SudokuValidation_Mac_Ready.zip` татна. ZIP-үүдийг задлаад `SudokuValidation.app` нээнэ. Apple Developer ID гарын үсэг/notarization байхгүй тул анх удаа **System Settings → Privacy & Security → Open Anyway** зөвшөөрөл шаардаж магадгүй. Intel Mac дээр шалгаагүй.
 
 ### macOS / Linux — эх кодоос
 
@@ -140,10 +156,15 @@ Windows, macOS, Linux-ийн CI шалгалтыг [GitHub Actions](https://gith
 
 ## Баримт бичиг
 
-- [Тайлан](docs/Report.pdf)
-- [PDF гарын авлага](docs/Manual.pdf)
+- [Нэг нүүр постер](docs/IV-2-5_Poster.pdf)
+- [Эцсийн тайлан](docs/IV-2-5_Final_Report.pdf)
+- [PDF гарын авлага](docs/IV-2-5_Manual.pdf)
 - [Хэрэглэгчийн гарын авлага](docs/USER_GUIDE.md)
 
 ## AI хэрэгслийн ашиглалт
 
 ChatGPT-ийг кодын зарим алдааг засах, нэмэлт тест боловсруулах, баримт бичгийн найруулгыг сайжруулахад ашигласан. Программыг Windows дээр ажиллуулж, зөв, буруу, хоосон самбар болон гүйцэтгэлийн хэмжилтийг багийн гишүүн өөрөө шалгасан.
+
+## Эцсийн туршилтын орчин
+
+C11/Pthreads, Python стандарт сан. Дахин шалгасан Linux орчин GCC 14.2.0, Python 3.12.14, Node.js 24.22.3. Windows гар туршилт Windows 10 Home 22H2 (19045.6466), i7-4770, 16 GB RAM дээр хийгдсэн. C regression 2,170, Python 26 тест давсан. Багц бүрийн BUILD_INFO.txt нь build commit болон суулгасан хувилбаруудыг агуулна. macOS багц Apple Silicon-д зориулагдсан.
