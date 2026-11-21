@@ -4,14 +4,16 @@
 9×9 Sudoku-ийн **бүрэн бөглөсөн шийд** зөв эсэхийг C11/Pthreads хөдөлгүүрээр шалгана. 1, 11, 27 урсгалын горимыг сонгож, урсгал тус бүрийн үр дүн болон хугацааг харьцуулна. Энэ нь Sudoku-г автоматаар боддог програм биш.
 
 ## Windows дээр ажиллуулах
-1. [Windows-ийн бэлэн ZIP-ийг шууд татна](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/download/v1.3.5-final/SudokuValidation_Windows_Ready.zip) (эсвэл [Releases хуудас](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/v1.3.5-final)-наас `SudokuValidation_Windows_Ready.zip` сонгоно).
+1. [Windows-ийн бэлэн ZIP-ийг шууд татна](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/download/v1.3.6-final/SudokuValidation_Windows_Ready.zip) (эсвэл [Releases хуудас](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/v1.3.6-final)-наас `SudokuValidation_Windows_Ready.zip` сонгоно).
 2. ZIP-ийг **Extract All** хийнэ.
 3. Задалсан хавтасны `SudokuValidation.exe`-г нээнэ. Python, GCC суулгах шаардлагагүй.
 4. Хөтөч `http://127.0.0.1:8765/dashboard.html` хаягаар нээгдэнэ. Програмын серверийн цонхыг ажиллаж байх хугацаанд бүү хаа.
 
 **Эх кодоос ажиллуулах өөр арга:** WSL ашиглаж байгаа бол Linux-ийн алхмыг дагана. `START_WINDOWS.bat` нь Python болон GCC compiler шаарддаг. ZIP дотроос `dashboard.html`-ийг шууд нээвэл `Failed to fetch` алдаа гарна. Windows SmartScreen анхааруулга гарвал зөвхөн эх сурвалжийг нь шалгасан программд зөвшөөрөл өгнө.
 
-## macOS дээр хоёр дараад ажиллуулах (Apple Silicon)
+## Mac дээр ажиллуулах
+
+### Бэлэн апп (Apple Silicon)
 1. Final release-ээс `SudokuValidation_Mac_Ready.zip` татна.
 2. Татсан artifact ZIP-ийг задлаад, доторх `SudokuValidation_Mac_Ready.zip`-ийг дахин задлах шаардлагатай байж болно.
 3. `SudokuValidation.app`-ийг Applications хавтас руу зөөж, хоёр дарж нээнэ. Browser дээр `http://127.0.0.1:8765/dashboard.html` нээгдэнэ. Python, GCC, Terminal шаардлагагүй.
@@ -19,6 +21,17 @@
 5. Дууссаны дараа Dock эсвэл Force Quit-ээр SudokuValidation аппыг хааж локал серверийг зогсооно.
 
 **Тэмдэглэл:** Одоогийн GitHub macOS build нь Apple Silicon (arm64) runner дээр хийгддэг. Intel Mac дээр энэ ZIP ажиллана гэж батлаагүй.
+
+### Эх кодоос ажиллуулах (Apple Silicon / Intel)
+Intel Mac дээр энэ аргыг хэрэглэнэ. Apple Silicon дээр мөн ажиллуулж болно. Xcode Command Line Tools, Python 3 болон make хэрэгтэй. Төслийн эх кодыг татаж задлаад Terminal-д төслийн хавтсаас:
+
+```sh
+xcode-select --install
+make
+python3 server.py
+```
+
+Xcode Command Line Tools суусан бол эхний командыг дахин ажиллуулах шаардлагагүй. Сервер ассан үед `http://127.0.0.1:8765/dashboard.html` нээнэ. Дуусахдаа Terminal-д Ctrl+C дарж зогсооно.
 
 ## Sudoku оруулах
 - Самбарын нүдэнд 1–9 цифр бичнэ. Сум, Backspace, Undo, Clear ашиглаж болно.
@@ -53,7 +66,7 @@
 
 ## Хувилбарын нийцэл, мэдэгдэж буй асуудал
 
-**Дугаартай хувилбар:** [v1.3.5-final](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/v1.3.5-final) Release-д Windows ZIP, тайлан, гарын авлага бий. Release-ийн tag нь тухайн Windows багцыг бүтээсэн commit-ийг заана.
+**Дугаартай хувилбар:** [v1.3.6-final](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/v1.3.6-final) Release-д Windows ZIP, тайлан, гарын авлага бий. Release-ийн tag нь тухайн Windows багцыг бүтээсэн commit-ийг заана.
 
 **Linux/WSL2 дахь ThreadSanitizer:** `make test` үед `FATAL: ThreadSanitizer: unexpected memory mapping` алдаа гарч болно. Хэрэв орчин зөвшөөрвөл `setarch "$(uname -m)" -R make test` гэж ASLR-ийг тухайн процессын хэмжээнд унтраан дахин туршиж болно; зөвшөөрөлгүй орчинд ажиллахгүй байж болно.
 
@@ -61,4 +74,4 @@
 
 **Порт завгүй үед:** `python3 server.py --port 8766` гэж ажиллуулаад `http://127.0.0.1:8766/dashboard.html` хаягийг нээнэ. Бэлэн EXE болон APP нь анхдагч 8765 портыг ашигладаг.
 
-**PDF баримтууд:** `docs/IV-2-5_Manual.pdf` нь v1.3.5-final-ийн хэрэглээ, CLI benchmark, C оношилгоо болон TSan-ийн зааврыг багтаана. `docs/IV-2-5_Final_Report.pdf` нь илгээсэн туршилтын тайлан.
+**PDF баримтууд:** `docs/IV-2-5_Manual.pdf` нь v1.3.6-final-ийн хэрэглээ, CLI benchmark, C оношилгоо болон TSan-ийн зааврыг багтаана. `docs/IV-2-5_Final_Report.pdf` нь илгээсэн туршилтын тайлан.
