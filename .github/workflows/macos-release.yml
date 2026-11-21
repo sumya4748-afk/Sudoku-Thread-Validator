@@ -83,8 +83,11 @@ jobs:
           with zipfile.ZipFile("SudokuValidation_Mac_Ready.zip", "a", zipfile.ZIP_DEFLATED) as bundle:
               bundle.write("BUILD_INFO.txt")
               bundle.write("README.md")
+              bundle.write("docs/USER_GUIDE.md")
               for pdf in sorted(Path("docs").glob("IV-2-5_*.pdf")):
                   bundle.write(pdf)
+              for image in sorted(Path("docs/images").glob("*.png")):
+                  bundle.write(image)
           PYZIP
       - uses: actions/upload-artifact@v4
         with:

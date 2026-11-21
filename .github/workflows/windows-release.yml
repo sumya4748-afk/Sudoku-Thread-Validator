@@ -52,6 +52,8 @@ jobs:
           Copy-Item README.md dist/SudokuValidation/README.md
           New-Item -ItemType Directory -Force dist/SudokuValidation/docs | Out-Null
           Copy-Item docs/IV-2-5_*.pdf dist/SudokuValidation/docs/
+          Copy-Item docs/USER_GUIDE.md dist/SudokuValidation/docs/
+          Copy-Item docs/images dist/SudokuValidation/docs/images -Recurse
           @(
             "Source commit: ${{ github.sha }}"
             (python --version)
