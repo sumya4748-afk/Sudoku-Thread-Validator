@@ -4,9 +4,9 @@
 
 ## Quick Start
 
-[Final release v1.3.5-final](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/v1.3.5-final)
+[Final release v1.3.6-final](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/v1.3.6-final)
 
-- **MacBook Air M1 / Apple Silicon:** Release-ээс `SudokuValidation_Mac_Ready.zip` татаж задлаад `SudokuValidation.app` нээнэ.
+- **Mac:** Apple Silicon бол Release-ээс `SudokuValidation_Mac_Ready.zip` татаж задлаад `SudokuValidation.app` нээнэ. Intel Mac бол доорх эх кодоос ажиллуулах аргыг дагана.
 - **Windows:** `SudokuValidation_Windows_Ready.zip`-ийг Extract All хийгээд `SudokuValidation.exe` нээнэ.
 - **Эх кодоос (macOS/Linux):** `make`, дараа нь `python3 server.py`. Хөтөч дээр `http://127.0.0.1:8765/dashboard.html` нээнэ.
 
@@ -120,13 +120,13 @@ ready queue-ийн дараалал зэрэг параметрээр thread-и�
 
 ### Windows — бэлэн EXE
 
-**Windows-д ашиглах тогтмол хувилбар:** [v1.3.5-final Windows ZIP-ийг татах](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/download/v1.3.5-final/SudokuValidation_Windows_Ready.zip). `SudokuValidation_Windows_Ready.zip`-ийг татаж, **Extract All** хийж бүрэн задлаад, доторх `SudokuValidation.exe`-г ажиллуулна. ZIP дотроос нь шууд HTML нээхгүй. Python болон GCC суулгах шаардлагагүй. Windows SmartScreen анхааруулга өгч болзошгүй; зөвхөн итгэлтэй эх сурвалжаас татсан файлыг ажиллуулна.
+**Windows-д ашиглах тогтмол хувилбар:** [v1.3.6-final Windows ZIP-ийг татах](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/download/v1.3.6-final/SudokuValidation_Windows_Ready.zip). `SudokuValidation_Windows_Ready.zip`-ийг татаж, **Extract All** хийж бүрэн задлаад, доторх `SudokuValidation.exe`-г ажиллуулна. ZIP дотроос нь шууд HTML нээхгүй. Python болон GCC суулгах шаардлагагүй. Windows SmartScreen анхааруулга өгч болзошгүй; зөвхөн итгэлтэй эх сурвалжаас татсан файлыг ажиллуулна.
 
 Эх кодоос Windows дээр ажиллуулахад Python 3 болон MSYS2 UCRT64 GCC шаардлагатай. Төслийн хавтсанд `START_WINDOWS.bat` ажиллуулна.
 
-### macOS — бэлэн APP (Apple Silicon)
+### Mac дээр ажиллуулах
 
-[Final release](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/v1.3.5-final)-ээс `SudokuValidation_Mac_Ready.zip` татна. ZIP-үүдийг задлаад `SudokuValidation.app` нээнэ. Apple Developer ID гарын үсэг/notarization байхгүй тул анх удаа **System Settings → Privacy & Security → Open Anyway** зөвшөөрөл шаардаж магадгүй. macOS-ийн бэлэн багцын HTTP гүүр, C хөдөлгүүрийн 1/11/27 горимыг GitHub Actions-ийн Apple Silicon орчинд шалгасан. Intel Mac дээр шалгаагүй.
+[Final release](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/v1.3.6-final)-ээс `SudokuValidation_Mac_Ready.zip` татна. ZIP-үүдийг задлаад `SudokuValidation.app` нээнэ. Apple Developer ID гарын үсэг/notarization байхгүй тул анх удаа **System Settings → Privacy & Security → Open Anyway** зөвшөөрөл шаардаж магадгүй. macOS-ийн бэлэн багцын HTTP гүүр, C хөдөлгүүрийн 1/11/27 горимыг GitHub Actions-ийн Apple Silicon орчинд шалгасан. Intel Mac дээр шалгаагүй.
 
 ### macOS / Linux — эх кодоос
 
