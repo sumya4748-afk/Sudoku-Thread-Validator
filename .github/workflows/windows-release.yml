@@ -110,7 +110,7 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_VERSION: v1.3.2-final
+          RELEASE_VERSION: v1.3.3-final
         run: |
           $tag = $env:RELEASE_VERSION
           $releases = gh release list --repo ${{ github.repository }} --limit 100 --json tagName

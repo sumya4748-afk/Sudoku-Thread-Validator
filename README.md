@@ -4,7 +4,7 @@
 
 ## Quick Start
 
-[Final release v1.3.2-final](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/v1.3.2-final)
+[Final release v1.3.3-final](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/v1.3.3-final)
 
 - **MacBook Air M1 / Apple Silicon:** Release-ээс `SudokuValidation_Mac_Ready.zip` татаж задлаад `SudokuValidation.app` нээнэ.
 - **Windows:** `SudokuValidation_Windows_Ready.zip`-ийг Extract All хийгээд `SudokuValidation.exe` нээнэ.
@@ -12,7 +12,7 @@
 
 ![Windows дээр алдаатай самбар шалгасан үр дүн](docs/images/windows-invalid.png)
 
-27 урсгалаас 24 нь зөв, мөр 1, багана 1, дэд тор 1 нь буруу. Үйлдлийн системийн 10 хувилбар дээрх бодит туршилт.
+27 урсгалаас 24 нь зөв, мөр 1, багана 1, дэд тор 1 нь буруу. Windows дээрх бодит туршилт.
 
 ![Windows дээрх 10 давталтын benchmark](docs/images/windows-benchmark.png)
 
@@ -103,7 +103,7 @@ mutex шаардлагагүй; `pthread_join()` нь бичилт parent-д х�
 
 V-1-10 шүүмжид хэмжилтийн хамгийн их хугацаа 1805 мкс хүрснийг дурдсан. Аль горимын утга болохыг заагаагүй.
 
-Шинэ хэмжилтийг нэг Linux x86-64 орчинд (kernel 6.18.57, GCC 14.2.0, `-O2`) `v1.2.1` эх кодоор, CPU-ийн хязгаарлалтыг 2 болон 4 логик CPU болгон тус тус хийсэн. Давтах команд нь `taskset -c 0,1 ./sudoku_validator -b 2000 -f tests/valid_fig426.txt` бөгөөд 4 CPU-тай хэмжилтэд `0,1,2,3` гэж өгнө. CPU дугаарыг өөрийн орчинд тохируулна. Хамгийн их хугацаа нь тухайн гүйлтийн утга тул системийн ачааллаас хамаарч хэлбэлзэнэ.
+2026.11.11-ний хэмжилтийг нэг Linux x86-64 орчинд (kernel 6.18.57, GCC 14.2.0, `-O2`) `v1.2.1` эх кодоор, CPU-ийн хязгаарлалтыг 2 болон 4 логик CPU болгон тус тус хийсэн. Давтах команд нь `taskset -c 0,1 ./sudoku_validator -b 2000 -f tests/valid_fig426.txt` бөгөөд 4 CPU-тай хэмжилтэд `0,1,2,3` гэж өгнө. CPU дугаарыг өөрийн орчинд тохируулна. Хамгийн их хугацаа нь тухайн гүйлтийн утга тул системийн ачааллаас хамаарч хэлбэлзэнэ.
 
 ## Интерактив дүрслэл
 
@@ -120,13 +120,13 @@ ready queue-ийн дараалал зэрэг параметрээр thread-и�
 
 ### Windows — бэлэн EXE
 
-**Windows-д ашиглах тогтмол хувилбар:** [v1.3.2-final Windows ZIP-ийг татах](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/download/v1.3.2-final/SudokuValidation_Windows_Ready.zip). `SudokuValidation_Windows_Ready.zip`-ийг татаж, **Extract All** хийж бүрэн задлаад, доторх `SudokuValidation.exe`-г ажиллуулна. ZIP дотроос нь шууд HTML нээхгүй. Python болон GCC суулгах шаардлагагүй. Windows SmartScreen анхааруулга өгч болзошгүй; зөвхөн итгэлтэй эх сурвалжаас татсан файлыг ажиллуулна.
+**Windows-д ашиглах тогтмол хувилбар:** [v1.3.3-final Windows ZIP-ийг татах](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/download/v1.3.3-final/SudokuValidation_Windows_Ready.zip). `SudokuValidation_Windows_Ready.zip`-ийг татаж, **Extract All** хийж бүрэн задлаад, доторх `SudokuValidation.exe`-г ажиллуулна. ZIP дотроос нь шууд HTML нээхгүй. Python болон GCC суулгах шаардлагагүй. Windows SmartScreen анхааруулга өгч болзошгүй; зөвхөн итгэлтэй эх сурвалжаас татсан файлыг ажиллуулна.
 
 Эх кодоос Windows дээр ажиллуулахад Python 3 болон MSYS2 UCRT64 GCC шаардлагатай. Төслийн хавтсанд `START_WINDOWS.bat` ажиллуулна.
 
 ### macOS — бэлэн APP (Apple Silicon)
 
-[Final release](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/v1.3.2-final)-ээс `SudokuValidation_Mac_Ready.zip` татна. ZIP-үүдийг задлаад `SudokuValidation.app` нээнэ. Apple Developer ID гарын үсэг/notarization байхгүй тул анх удаа **System Settings → Privacy & Security → Open Anyway** зөвшөөрөл шаардаж магадгүй. Intel Mac дээр шалгаагүй.
+[Final release](https://github.com/sumya4748-afk/Sudoku-Thread-Validator/releases/tag/v1.3.3-final)-ээс `SudokuValidation_Mac_Ready.zip` татна. ZIP-үүдийг задлаад `SudokuValidation.app` нээнэ. Apple Developer ID гарын үсэг/notarization байхгүй тул анх удаа **System Settings → Privacy & Security → Open Anyway** зөвшөөрөл шаардаж магадгүй. Intel Mac дээр шалгаагүй.
 
 ### macOS / Linux — эх кодоос
 
@@ -167,4 +167,4 @@ ChatGPT-ийг кодын зарим алдааг засах, нэмэлт те�
 
 ## Эцсийн туршилтын орчин
 
-C11/Pthreads, Python стандарт сан. Дахин шалгасан Linux орчин GCC 14.2.0, Python 3.12.14, Node.js 24.22.3. Windows гар туршилт үйлдлийн системийн 10 хувилбар дээр хийгдсэн. C regression 2,170, Python 26 тест давсан. Багц бүрийн BUILD_INFO.txt нь build commit болон суулгасан хувилбаруудыг агуулна. macOS багц Apple Silicon-д зориулагдсан.
+C11/Pthreads, Python стандарт сан. Дахин шалгасан Linux орчин GCC 14.2.0, Python 3.12.14, Node.js 24.22.3. Гар туршилтыг Windows дээр хийсэн. C regression 2,170, Python 26 тест давсан. Багц бүрийн BUILD_INFO.txt нь build commit болон суулгасан хувилбаруудыг агуулна. macOS багц Apple Silicon-д зориулагдсан.
