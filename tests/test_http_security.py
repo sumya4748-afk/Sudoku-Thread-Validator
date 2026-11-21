@@ -1,0 +1,82 @@
+"""Regression tests for local-only HTTP server access controls."""
+import http.client
+import json
+import socket
+import threading
+import unittest
+from http.server import ThreadingHTTPServer
+
+from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from server import Handler, check
+
+class HTTPTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
+        cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
+        cls.thread.start()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.server.shutdown()
+        cls.server.server_close()
+        cls.thread.join(timeout=3)
+
+    def request(self, method, path, body=None, headers=None):
+        conn = http.client.HTTPConnection('127.0.0.1', self.server.server_port, timeout=4)
+        hdr = {'Host': f'127.0.0.1:{self.server.server_port}'}
+        hdr.update(headers or {})
+        conn.request(method, path, body=body, headers=hdr)
+        response = conn.getresponse()
+        data = response.read()
+        conn.close()
+        return response.status, data
+
+    def test_public_and_private_paths(self):
+        for path in ('/dashboard.html', '/ui/sudoku_threads.html'):
+            self.assertEqual(self.request('GET', path)[0], 200, path)
+        for path in ('/server.py', '/.git/config', '/sudoku_validator.c', '/README.md'):
+            self.assertEqual(self.request('GET', path)[0], 404, path)
+
+    def test_host_and_origin(self):
+        self.assertEqual(self.request('GET', '/dashboard.html', headers={'Host': 'evil.test'})[0], 403)
+        status, _ = self.request('GET', '/dashboard.html', headers={'Host': '127.0.0.1:8765'})
+        self.assertEqual(status, 403)
+        status, _ = self.request('POST', '/api/validate', '{}', {
+            'Content-Type': 'application/json',
+            'Origin': f'http://localhost:{self.server.server_port}',
+        })
+        self.assertEqual(status, 400)
+        self.assertEqual(self.request('POST', '/api/validate', '{}',
+                         {'Content-Type': 'application/json', 'Origin': 'http://evil.test'})[0], 403)
+
+    def test_malformed_request_url_returns_bad_request(self):
+        port = self.server.server_port
+        for method in ('GET', 'HEAD', 'POST'):
+            with self.subTest(method=method):
+                with socket.create_connection(('127.0.0.1', port), timeout=4) as conn:
+                    request = f'{method} http://[/dashboard.html HTTP/1.0\r\nHost: localhost:{port}\r\n\r\n'
+                    conn.sendall(request.encode('ascii'))
+                    response = http.client.HTTPResponse(conn, method=method)
+                    response.begin()
+                    self.assertEqual(response.status, 400)
+                    response.close()
+
+    def test_bad_payload_and_content_type(self):
+        for payload in ('[]', 'null', '123', '{}', '{', b'\xff'):
+            status, _ = self.request('POST', '/api/validate', payload, {'Content-Type': 'application/json'})
+            self.assertEqual(status, 400, payload)
+        self.assertEqual(self.request('POST', '/api/validate', '{}',
+                         {'Content-Type': 'text/plain'})[0], 415)
+
+    def test_valid_request(self):
+        good = [int(x) for x in '534678912672195348198342567859761423426853791713924856961537284287419635345286179']
+        status, data = self.request('POST', '/api/validate',
+                         json.dumps({'board': good, 'mode': 11}), {'Content-Type': 'application/json'})
+        self.assertEqual(status, 200)
+        self.assertTrue(json.loads(data)['valid'])
+
+if __name__ == '__main__':
+    unittest.main()

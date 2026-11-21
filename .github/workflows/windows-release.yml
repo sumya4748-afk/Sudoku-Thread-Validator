@@ -1,0 +1,113 @@
+name: Build Windows standalone Sudoku
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '**'
+  push:
+    paths:
+      - 'sudoku_validator.c'
+      - 'README.md'
+      - 'Makefile'
+      - 'run_tests.sh'
+      - 'launch.py'
+      - 'server.py'
+      - 'launch_standalone.py'
+      - 'dashboard.html'
+      - 'tests/**'
+      - 'docs/**'
+      - '.github/workflows/windows-release.yml'
+permissions:
+  contents: write
+jobs:
+  windows:
+    runs-on: windows-latest
+    concurrency:
+      group: windows-standalone-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: mingw-w64-ucrt-x86_64-gcc
+      - name: Compile C engine
+        shell: msys2 {0}
+        run: gcc -std=c11 -O2 -Wall -Wextra -pthread sudoku_validator.c -o sudoku_validator.exe
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Test bridge on Windows
+        shell: pwsh
+        run: python -m unittest discover -s tests -v
+      - name: Package app
+        shell: pwsh
+        run: |
+          python -m pip install pyinstaller
+          pyinstaller --noconfirm --clean --onedir --console --name SudokuValidation --add-data "dashboard.html;." --add-binary "sudoku_validator.exe;." --add-data "server.py;." --add-data "ui;ui" --hidden-import server launch_standalone.py
+          Copy-Item README.md dist/SudokuValidation/README.md
+          Compress-Archive -Path dist/SudokuValidation -DestinationPath SudokuValidation_Windows_Ready.zip
+      - name: Smoke-test packaged Windows executable
+        shell: pwsh
+        run: |
+          $app = (Resolve-Path 'dist/SudokuValidation/SudokuValidation.exe').Path
+          $proc = Start-Process -FilePath $app -PassThru
+          try {
+            $ready = $false
+            for ($i = 0; $i -lt 40; $i++) {
+              if ($proc.HasExited) { throw "Packaged EXE exited early" }
+              try {
+                $page = Invoke-WebRequest 'http://127.0.0.1:8765/dashboard.html' -TimeoutSec 2
+                if ($page.StatusCode -eq 200) { $ready = $true; break }
+              } catch { Start-Sleep -Milliseconds 500 }
+            }
+            if (-not $ready) { throw "Packaged EXE did not serve dashboard" }
+            $board = "534678912672195348198342567859761423426853791713924856961537284287419635345286179".ToCharArray() | ForEach-Object { [int]::Parse([string]$_) }
+            foreach ($mode in @(1, 11, 27)) {
+              $body = @{ board = @($board); mode = $mode } | ConvertTo-Json -Compress -Depth 5
+              $result = Invoke-RestMethod 'http://127.0.0.1:8765/api/validate' -Method Post -ContentType 'application/json' -Body $body
+              if (-not $result.valid -or $result.workers.Count -ne $mode) { throw "Packaged EXE mode $mode failed" }
+            }
+            $sim = Invoke-WebRequest 'http://127.0.0.1:8765/ui/sudoku_threads.html' -TimeoutSec 3
+            if ($sim.StatusCode -ne 200) { throw "Bundled simulation missing" }
+          } finally {
+            Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SudokuValidation_Windows_Ready
+          path: SudokuValidation_Windows_Ready.zip
+      - name: Publish easy-download Windows ZIP
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "windows-latest"
+          gh release view $tag --repo ${{ github.repository }} 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --repo ${{ github.repository }} --target "${{ github.sha }}" --title "Windows - Ready to Run" --notes "Download the Windows ZIP, Extract All, then run SudokuValidation.exe. No GCC or Python installation required." --latest=false
+            if ($LASTEXITCODE -ne 0) { throw "Failed to create Windows release" }
+          }
+          gh release upload $tag SudokuValidation_Windows_Ready.zip --repo ${{ github.repository }} --clobber
+          if ($LASTEXITCODE -ne 0) { throw "Failed to upload Windows ZIP" }
+      - name: Publish versioned release with verified Windows ZIP and PDFs
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: v1.2.1
+        run: |
+          $tag = $env:RELEASE_VERSION
+          $releases = gh release list --repo ${{ github.repository }} --limit 100 --json tagName
+          if ($LASTEXITCODE -ne 0) { throw "Failed to check releases" }
+          if (($releases | ConvertFrom-Json).tagName -contains $tag) { return }
+          $existingTag = git ls-remote --tags origin "refs/tags/$tag" "refs/tags/$tag^{}"
+          if ($LASTEXITCODE -ne 0) { throw "Failed to verify $tag" }
+          if ($existingTag -and ($existingTag -join "`n") -notmatch "(?m)^${{ github.sha }}\s") {
+            throw "$tag already points at a different commit"
+          }
+          $notes = "Built and smoke-tested from ${{ github.sha }}. Includes C worker diagnostics, CLI benchmark median, the updated user manual, and the original experiment report."
+          gh release create $tag SudokuValidation_Windows_Ready.zip docs/Manual.pdf docs/Report.pdf --repo ${{ github.repository }} --target "${{ github.sha }}" --title "$tag" --notes "$notes" --latest
+          if ($LASTEXITCODE -ne 0) { throw "Failed to publish $tag" }
